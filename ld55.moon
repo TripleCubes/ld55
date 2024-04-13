@@ -6,25 +6,320 @@
 -- version: 0.1
 -- script:  moon
 
+export WINDOW_W = 240
+export WINDOW_H = 136
+export MAP_SCR_W = 30
+export MAP_SCR_H = 17
+export PLAYER_W = 8
+export PLAYER_H = 14
 export t = 0
+export entity_list = {}
+export player = {}
+export camera = { pos: {x: 0, y: 0} }
 
 export BOOT = ->
+	game_init!
+
+export game_init = ->
+	player = player_new(vecnew(10, 10))
+	camera.pos = vecnew(player.pos.x - WINDOW_W/2, player.pos.y - WINDOW_H/2)
 
 export TIC = ->
+	cls(0)
+	game_update!
 	t += 1
+
+export game_update = ->
+	entity_list_update!
+	camera_update!
+
+	draw_pos = get_draw_pos(vecnew(0, 0))
+	map(0, 0, 30, 17, draw_pos.x, draw_pos.y)
+	entity_list_draw!
+
+export get_draw_pos = (vec) ->
+	return vecsub(vecfloor(vec), vecfloor(camera.pos))
+
+export camera_update = ->
+	v = vecnew(WINDOW_W/2-PLAYER_W/2, WINDOW_H/2-PLAYER_H/2)
+	sub = vecsub(vecsub(player.pos, v), camera.pos)
+	if veclength(sub) <= 0.1
+		camera.pos = vecsub(player.pos, v)
+		return
+	dir = vecnormalized(sub)
+	add_len = veclength(sub) * 0.06
+	add = vecmul(dir, add_len)
+	camera.pos = vecadd(camera.pos, add)
+
+export player_new = (pos) ->
+	p = entity_new(pos, vecnew(PLAYER_W, PLAYER_H), player_update, player_draw, nil)
+	p.right_dir = false
+	return p
+
+export player_update = (player) ->
+	if btn(2)
+		player.right_dir = false
+		player.fvec.x -= 1
+	if btn(3)
+		player.right_dir = true
+		player.fvec.x += 1
+	if btnp(4) and player.down_col
+		player.gravity = -2
+	
+export player_draw = (player) ->
+	draw_pos = get_draw_pos(player.pos)
+
+	spr_id = 256
+
+	if btn(2) or btn(3)
+		spr_id = 260 + (t // 10 % 3) * 2
+	else
+		spr_id = 256 + (t // 30 % 2) * 2
+
+	flip = 1
+	if player.right_dir
+		flip = 0
+
+	spr(spr_id, draw_pos.x - 4, draw_pos.y - 2, 0, 1, flip, 0, 2, 2)
+
+export entity_collision = (e) ->
+	for x = 0, e.sz.x//8
+		add = vecnew(x*8, e.sz.y)
+		if x == e.sz.x//8
+			add.x -= 1
+		pos = vecadd(e.pos, add)
+		if map_col(pos.x//8, pos.y//8)
+			e.down_col = true
+			break
+
+	for x = 0, e.sz.x//8
+		add = vecnew(x*8, -1)
+		if x == e.sz.x//8
+			add.x -= 1
+		pos = vecadd(e.pos, add)
+		if map_col(pos.x//8, pos.y//8)
+			e.up_col = true
+			break
+
+	for y = 0, e.sz.y//8
+		add = vecnew(-1, y*8)
+		if y == e.sz.y//8
+			add.y -= 1
+		pos = vecadd(e.pos, add)
+		if map_col(pos.x//8, pos.y//8)
+			e.left_col = true
+			break
+
+	for y = 0, e.sz.y//8
+		add = vecnew(e.sz.x, y*8)
+		if y == e.sz.y//8
+			add.y -= 1
+		pos = vecadd(e.pos, add)
+		if map_col(pos.x//8, pos.y//8)
+			e.right_col = true
+			break
+
+export entity_physic = (e) ->
+	e.gravity += 0.1
+	if e.down_col and e.gravity > 0
+		e.gravity = 0
+	e.fvec.y += e.gravity
+	entity_move_x(e)
+	entity_move_y(e)
+
+export entity_move_x = (e) ->
+	if e.fvec.x == 0
+		return
+	next_pos = veccopy(e.pos)
+	next_pos.x += e.fvec.x
+	physic_pt_list = get_physic_pt_list(next_pos, e.sz)
+	for i, v in ipairs(physic_pt_list)
+		if map_solid(v.x//8, v.y//8)
+			e.pos.x = floor2(e.pos.x + 4, 8)
+			return
+		if map_left_col(v.x//8, v.y//8)
+			if e.pos.x + e.sz.x <= floor2(v.x, 8)
+				e.pos.x = floor2(e.pos.x + 4, 8)
+				return
+		if map_right_col(v.x//8, v.y//8)
+			if e.pos.x >= floor2(v.x, 8) + 8
+				e.pos.x = floor2(e.pos.x + 4, 8)
+				return
+	e.pos.x = next_pos.x
+	
+export entity_move_y = (e) ->
+	if e.fvec.y == 0
+		return
+	next_pos = veccopy(e.pos)
+	next_pos.y += e.fvec.y
+	physic_pt_list = get_physic_pt_list(next_pos, e.sz)
+	for i, v in ipairs(physic_pt_list)
+		if map_solid(v.x//8, v.y//8)
+			e.pos.y = floor2(e.pos.y + 4, 8)
+			return
+		if map_up_col(v.x//8, v.y//8)
+			if e.pos.y + e.sz.y - 1 <= floor2(v.y, 8)
+				e.pos.y = floor2(e.pos.y + 4, 8)
+				return
+		if map_down_col(v.x//8, v.y//8)
+			if e.pos.y + 1 >= floor2(v.y, 8) + 8
+				e.pos.y = floor2(e.pos.y + 4, 8)
+				return
+	e.pos.y = next_pos.y
+
+export get_physic_pt_list = (pos, sz) ->
+	list = {}
+	for x = 0, sz.x // 8
+		for y = 0, sz.y // 8
+			add = vecnew(x * 8, y * 8)
+			if x == sz.x // 8
+				add.x -= 1
+			if y == sz.y // 8
+				add.y -= 1
+			table.insert(list, vecadd(pos, add))
+	return list
+
+export entity_new = (pos, sz, update, draw, ckrm) ->
+	entity = {
+		pos: veccopy(pos),
+		sz: veccopy(sz),
+
+		update: update,
+		draw: draw,
+		ckrm: ckrm,
+
+		rm_next_frame: false,
+
+		default_physic: true,
+		gravity_enabled: true,
+		gravity: 0,
+		fvec: vecnew(0, 0),
+
+		up_col: false,
+		down_col: false,
+		left_col: false,
+		right_col: false,
+	}
+	table.insert(entity_list, entity)
+	return entity
+
+export entity_list_update = () ->
+	for i, v in ipairs(entity_list)
+		v.up_col = false
+		v.down_col = false
+		v.left_col = false
+		v.right_col = false
+		v.fvec = vecnew(0, 0)
+
+		entity_collision(v)
+		v.update(v)
+
+		if v.default_physic
+			entity_physic(v)
+
+export entity_list_draw = () ->
+	for i, v in ipairs(entity_list)
+		v.draw(v)
+
+export entity_list_ckrm = () ->
+	for i = #entity_list, 1, -1
+		v = entity_list[i]
+
+		if v.ckrm == nil
+			if v.rm_next_frame
+				table.remove(entity_list, i)
+			continue
+
+		v.ckrm(i, v)
+
+export map_col = (x, y) ->
+	if map_solid(x, y)
+		return true
+	if map_up_col(x, y)
+		return true
+	if map_down_col(x, y)
+		return true
+	if map_left_col(x, y)
+		return true
+	if map_right_col(x, y)
+		return true
+	return false
+
+export map_solid = (x, y) ->
+	m = mget(x, y)
+	return m == 1
+
+export map_up_col = (x, y) ->
+	m = mget(x, y)
+	return m == 2
+
+export map_down_col = (x, y) ->
+	m = mget(x, y)
+	return m == 3
+
+export map_left_col = (x, y) ->
+	m = mget(x, y)
+	return m == 4
+
+export map_right_col = (x, y) ->
+	m = mget(x, y)
+	return m == 5
+
+export floor2 = (a, b) ->
+	return a // b * b
 
 export vecnew = (x, y) ->
 	return { x: x, y: y }
 
+export veccopy = (vec) ->
+	return { x: vec.x, y: vec.y }
+
+export vecadd = (veca, vecb) ->
+	return { x: veca.x + vecb.x, y: veca.y + vecb.y }
+
+export vecsub = (veca, vecb) ->
+	return { x: veca.x - vecb.x, y: veca.y - vecb.y }
+
+export vecmul = (vec, n) ->
+	return { x: vec.x * n, y: vec.y * n }
+
+export vecdiv = (vec, n) ->
+	return { x: vec.x / n, y: vec.y / n }
+
+export vecdivdiv = (vec, n) ->
+	return { x: vec.x // n, y: vec.y // n }
+
+export veclength = (vec) ->
+	return math.sqrt(vec.x*vec.x + vec.y*vec.y)
+
+export vecnormalized = (vec) ->
+	len = veclength(vec)
+	return { x: vec.x/len, y: vec.y/len }
+
+export vecequals = (veca, vecb) ->
+	return veca.x == vecb.x and veca.y == vecb.y
+
+export vecfloor = (vec) ->
+	return { x: math.floor(vec.x), y: math.floor(vec.y) }
+
+export vecround = (vec) ->
+	return { x: round(vec.x), y: round(vec.y) }
+
+export round = (n) ->
+	return math.floor(n + 0.5)
+
+export rndf = (a, b) ->
+	return math.random() * (b - a) + a
+
+export rndi = (a, b) ->
+	return math.random(a, b)
+
+export dice = (a, b) ->
+	rnd = rndi(1, b)
+	return rnd >= 1 and rnd <= a
+
 -- <TILES>
--- 001:eccccccccc888888caaaaaaaca888888cacccccccacc0ccccacc0ccccacc0ccc
--- 002:ccccceee8888cceeaaaa0cee888a0ceeccca0ccc0cca0c0c0cca0c0c0cca0c0c
--- 003:eccccccccc888888caaaaaaaca888888cacccccccacccccccacc0ccccacc0ccc
--- 004:ccccceee8888cceeaaaa0cee888a0ceeccca0cccccca0c0c0cca0c0c0cca0c0c
--- 017:cacccccccaaaaaaacaaacaaacaaaaccccaaaaaaac8888888cc000cccecccccec
--- 018:ccca00ccaaaa0ccecaaa0ceeaaaa0ceeaaaa0cee8888ccee000cceeecccceeee
--- 019:cacccccccaaaaaaacaaacaaacaaaaccccaaaaaaac8888888cc000cccecccccec
--- 020:ccca00ccaaaa0ccecaaa0ceeaaaa0ceeaaaa0cee8888ccee000cceeecccceeee
+-- 001:ccccccccc000000cc000000cc000000cc000000cc000000cc000000ccccccccc
 -- </TILES>
 
 -- <SPRITES>
@@ -53,6 +348,20 @@ export vecnew = (x, y) ->
 -- 048:000100210000021100001111000cc011000000ff000000c0000000c0000000f0
 -- 049:120010001120000011110000110cc000ff0000000c0000000c0000000f000000
 -- </SPRITES>
+
+-- <MAP>
+-- 004:000000000000000000000000000000000000000000100000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+-- 005:000000000000000000000000000000000000000000100000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+-- 006:000000000000000000000000000000000000000010000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+-- 007:000000000000000000000000000000000000000010000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+-- 008:000000000000000000000000000000000000001000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+-- 009:000000000000000000000000000000000000001000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+-- 010:000000000000000000000000000000000000100000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+-- 011:000000000000000000000000000000000000100000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+-- 012:000000000000000000000000000000000010000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+-- 013:000000000000000000000000000000001010000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+-- 014:101010101010101010101010101010101010101010101010100000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+-- </MAP>
 
 -- <WAVES>
 -- 000:00000000ffffffff00000000ffffffff
