@@ -331,6 +331,7 @@ export crystal_bounce_update = (crystal) ->
 	if veclength(crystal.external_fvec) < CRYSTAL_SUMMON_VEL
 		crystal.rm_next_frame = true
 		imp_new(crystal.pos)
+		timed_ent_new(crystal.pos, 10, {412, 414}, 5, vecnew(-16, -16), 2, 2, 2)
 
 export crystal_bounce_draw = (crystal) ->
 	draw_pos = get_draw_pos(crystal.pos)
@@ -475,7 +476,8 @@ export imp_update = (imp) ->
 	imp.t -= 1
 	if imp.t == 0
 		imp.rm_next_frame = true
-		-- TODO: despawn animation
+		-- TODO: despawn sfx
+		timed_ent_new(imp.pos, 16, {414, 412}, 8, vecnew(-16, -16), 2, 2, 2)
 	imp.attack_t -= 1
 	if imp.attack_t <= 0
 		imp.attack_t = 10
@@ -499,6 +501,29 @@ export imp_draw = (imp) ->
 	if DEBUG_DRAW_HITBOXES
 		circb(draw_pos.x, draw_pos.y, IMP_RANGE, 11)
 	spr(spr_id, draw_pos.x - 8, draw_pos.y - 8, 0, 1, flip, 0, 2, 2)
+
+export timed_ent_new = (pos, ttl, sprites, frames_per_sprite, draw_off, scale, sx, sy) ->
+	e = entity_new(pos, vecnew(0, 0), timed_ent_update, timed_ent_draw, nil)
+	e.t = ttl
+	e.sprites = sprites
+	e.frames_per_sprite = frames_per_sprite
+	e.draw_off = draw_off
+	e.scale = scale
+	e.sx = sx
+	e.sy = sy
+	e.gravity_enabled = false
+	return e
+
+export timed_ent_update = (e) ->
+	e.t -= 1
+	if e.t == 0
+		e.rm_next_frame = true
+	
+export timed_ent_draw = (e) ->
+	frame = (e.t // e.frames_per_sprite) % #e.sprites
+	spr_id = e.sprites[#e.sprites - frame]
+	draw_pos = get_draw_pos(e.pos)
+	spr(spr_id, draw_pos.x + e.draw_off.x, draw_pos.y + e.draw_off.y, 0, e.scale, 0, 0, e.sx, e.sy)
 
 export entity_collision = (e) ->
 	for x = 0, e.sz.x//8
@@ -890,6 +915,14 @@ export entity_overlap = (e1, e2) ->
 -- 115:112000001112000011200000c2000000f0000000c0000000dc0000000f000000
 -- 116:000100220000021100000c1100000011000000ff000000d000000d0000000f00
 -- 117:11200000111200001c20000011000000ff0000000c0000000c0000000f000000
+-- 156:0000000000000000000000000000000000000033000033430000344400033444
+-- 157:0000000000000000000000000000000000000000303000003333000044333000
+-- 158:0000000000000088000088880000880000080003008830000088304008830400
+-- 159:0000000080000000880088000008388030004388004000380004408000008000
+-- 172:0003344400003344000033330000033300000000000000000000000000000000
+-- 173:4443300044433000444300003433000033300000000000000000000000000000
+-- 174:0880000000803000000000000008000000834000008830000008838000008800
+-- 175:0000080000000800000040000004000083400380000033808883880000880000
 -- 188:00000000000000000004000000044488000048880000888800008811000888ff
 -- 189:000000000000000000004000884440008884000088880000111800001ff88000
 -- 190:000000000004000000044488000048880000888800008811000888ff00008111
