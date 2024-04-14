@@ -217,7 +217,7 @@ export player_update = (player) ->
 
 		if player.prev_btn_6_holding
 			dir = vec_from_rad(player.aim_rad)
-			crystal_bounce_new(player.pos, vecmul(dir, 4))
+			crystal_bounce_new(player.pos, vecmul(dir, 4.5))
 
 
 	else
@@ -387,8 +387,9 @@ export entity_collision = (e) ->
 			add.y -= 1
 		pos = vecadd(e.pos, add)
 		if map_col(pos.x//8, pos.y//8)
-			e.left_col = true
-			break
+			if pos.x == floor2(pos.x, 8) + 7
+				e.left_col = true
+				break
 
 	for y = 0, e.sz.y//8
 		add = vecnew(e.sz.x, y*8)
@@ -396,8 +397,9 @@ export entity_collision = (e) ->
 			add.y -= 1
 		pos = vecadd(e.pos, add)
 		if map_col(pos.x//8, pos.y//8)
-			e.right_col = true
-			break
+			if pos.x == floor2(pos.x, 8)
+				e.right_col = true
+				break
 
 export entity_physic = (e) ->
 	if e.gravity_enabled
