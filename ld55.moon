@@ -25,6 +25,8 @@ export camera_tween_origin = {}
 export camera_tweening_start_at = 0
 export CAMERA_TWEENING_TIME = 60
 
+SFX_JUMP = 0
+
 export BOOT = ->
 	game_init!
 
@@ -135,7 +137,6 @@ export camera_update = ->
 export player_new = (pos) ->
 	p = entity_new(pos, vecnew(PLAYER_W, PLAYER_H), player_update, player_draw, nil)
 	p.right_dir = true
-	p.on_floor = false
 	return p
 
 export player_update = (player) ->
@@ -147,13 +148,14 @@ export player_update = (player) ->
 		player.fvec.x += 1
 	if btnp(4) and player.down_col
 		player.gravity = -2
+		sfx(SFX_JUMP)
 	
 export player_draw = (player) ->
 	draw_pos = get_draw_pos(player.pos)
 
 	spr_id = 256
 
-	if not player.on_floor
+	if not player.down_col
 		-- Jumping/falling
 		if player.gravity < 0
 			spr_id = 266
@@ -161,8 +163,13 @@ export player_draw = (player) ->
 			spr_id = 268
 	else
 		if btn(2) or btn(3)
-			-- walking
-			spr_id = 260 + (t // 10 % 3) * 2
+			-- walking (frames: 0, 1, 0, 2)
+			d = t // 8 % 4
+			if d == 2
+				d = 0
+			elseif d == 3
+				d = 2
+			spr_id = 260 + d * 2
 		else
 			-- idle
 			spr_id = 256 + (t // 30 % 2) * 2
@@ -214,10 +221,8 @@ export entity_collision = (e) ->
 
 export entity_physic = (e) ->
 	e.gravity += 0.1
-	e.on_floor = false
 	if e.down_col and e.gravity > 0
 		e.gravity = 0
-		e.on_floor = true
 	if e.up_col and e.gravity < 0
 		e.gravity = 0
 	e.fvec.y += e.gravity
@@ -296,7 +301,6 @@ export entity_new = (pos, sz, update, draw, ckrm) ->
 		default_physic: true,
 		gravity_enabled: true,
 		gravity: 0,
-		on_floor: false,
 		fvec: vecnew(0, 0),
 
 		up_col: false,
@@ -505,7 +509,7 @@ export ease = (n) ->
 -- </WAVES>
 
 -- <SFX>
--- 000:000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000300000000000
+-- 000:a70077035706671077208730a740b750c760c780d790d7a0e7b0e7d0e7f0f700f700f700f700f700f700f700f700f700f700f700f700f700f700f700409000004000
 -- 032:010021003100510051005100510051005100510051005100510051005100510051005100510051005100510051005100510051005100510051005100202000000000
 -- 033:0305130323024301430073009300b300c300d300f300f300f300f300f300f300f300f300f300f300f300f300f300f300f300f300f300f300f300f300a00000000000
 -- 034:6400b400d400e400f400f400f400f400f400f400f400f400f400f400f400f400f400f400f400f400f400f400f400f400f400f400f400f400f400f400700000000000
