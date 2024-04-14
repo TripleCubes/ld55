@@ -6,6 +6,7 @@
 -- version: 0.1
 -- script:  moon
 
+export PI = 3.1416
 export WINDOW_W = 240
 export WINDOW_H = 136
 export MAP_SCR_W = 30
@@ -27,17 +28,19 @@ export camera_tween_origin = {}
 export camera_tweening_start_at = 0
 export CAMERA_TWEENING_TIME = 60
 
-SFX_JUMP = 0
-SFX_SWIPE = 1
-SFX_SWIPE_HIT = 2
+export CRYSTAL_BOUNCE = 1
 
-MAP_ENEMY_SLIME = 6
-SLIME_W = 12
-SLIME_H = 12
+export SFX_JUMP = 0
+export SFX_SWIPE = 1
+export SFX_SWIPE_HIT = 2
 
-LAYER_NONE = 0
-LAYER_SWIPES = 1
-LAYER_ENEMIES = 2
+export MAP_ENEMY_SLIME = 6
+export SLIME_W = 12
+export SLIME_H = 12
+
+export LAYER_NONE = 0
+export LAYER_SWIPES = 1
+export LAYER_ENEMIES = 2
 
 DEBUG_DRAW_HITBOXES = true
 
@@ -162,9 +165,11 @@ export player_new = (pos) ->
 	p.attack = 0
 	p.attack_t = t
 	p.attack_row = 0
+	p.aim_mode = false
+	p.aim_rad = 0
 	return p
 
-export player_update = (player) ->
+export player_movement = (player) ->
 	-- Can't move/jump if attacking on ground
 	if not player.down_col or player.attack == 0
 		if btn(2)
@@ -185,6 +190,42 @@ export player_update = (player) ->
 		sfx(SFX_SWIPE)
 	if player.attack > 0
 		player.attack -= 1
+
+	if btnp(6)
+		player.aim_mode = true
+		if player.right_dir
+			player.aim_rad = PI -- 180 degree
+		else
+			player.aim_rad = 0
+
+export player_aim_mode = (player) ->
+	if btn(2)
+		player.aim_rad -= 0.1
+		if player.aim_rad < 0
+			player.aim_rad = 0
+	if btn(3)
+		player.aim_rad += 0.1
+		if player.aim_rad > PI
+			player.aim_rad = PI
+	
+	if btnp(6)
+		player.aim_mode = false
+
+	if btnp(4) and player.down_col
+			player.gravity = -2
+			sfx(SFX_JUMP)
+
+	if btnp(5)
+		player.aim_mode = false
+		dir = vec_from_rad(player.aim_rad)
+		crystal_bounce_new(player.pos, vecmul(dir, 4))
+
+export player_update = (player) ->
+	if not player.aim_mode
+		player_movement(player)
+
+	elseif player.aim_mode
+		player_aim_mode(player)
 	
 export player_draw = (player) ->
 	draw_pos = get_draw_pos(player.pos)
@@ -203,7 +244,7 @@ export player_draw = (player) ->
 		else
 			spr_id = 268
 	else
-		if btn(2) or btn(3)
+		if (btn(2) or btn(3)) and not player.aim_mode
 			-- walking (frames: 0, 1, 0, 2)
 			d = t // 8 % 4
 			if d == 2
@@ -220,6 +261,13 @@ export player_draw = (player) ->
 		flip = 0
 
 	spr(spr_id, draw_pos.x - 4, draw_pos.y - 2, 0, 1, flip, 0, 2, 2)
+
+
+	if player.aim_mode
+		dir = vec_from_rad(player.aim_rad)
+		player_center = vecadd(draw_pos, vecnew(PLAYER_W/2, PLAYER_H/2))
+		added = vecadd(player_center, vecmul(dir, 15))
+		line(player_center.x, player_center.y, added.x, added.y, 12)
 
 export swipe_new = (player, pos) ->
 	if player.right_dir
@@ -254,6 +302,22 @@ export swipe_draw = (swipe) ->
 	if DEBUG_DRAW_HITBOXES
 		rectb(draw_pos.x, draw_pos.y, swipe.sz.x, swipe.sz.y, 11)
 	spr(spr_id, draw_pos.x, draw_pos.y, 0, 1, flip, 0, 2, 2)
+
+export crystal_bounce_new = (pos, efvec) ->
+	crystal = entity_new(pos, vecnew(8, 8), crystal_bounce_update, crystal_bounce_draw)
+	crystal.type = CRYSTAL_BOUNCE
+	crystal.external_fvec = veccopy(efvec)
+
+export crystal_bounce_update = (crystal) ->
+	if crystal.up_col or crystal.down_col
+		crystal.external_fvec.y *= -1
+	if crystal.left_col or crystal.right_col
+		crystal.external_fvec.x *= -1
+
+export crystal_bounce_draw = (crystal) ->
+	draw_pos = get_draw_pos(crystal.pos)
+	spr_id = 510
+	spr(spr_id, draw_pos.x, draw_pos.y, 0, 1, 0, 0, 1, 1)
 
 export enemy_new = (pos) ->
 	e = entity_new(pos, vecnew(SLIME_W, SLIME_H), enemy_update, enemy_draw, nil)
@@ -330,7 +394,7 @@ export entity_physic = (e) ->
 	entity_move_x(e)
 	entity_move_y(e)
 
-	e.external_fvec = vecshrink(e.external_fvec, 0.1)
+	e.external_fvec = vecshrink(e.external_fvec, 0.03)
 
 export entity_move_x = (e) ->
 	fvec = vecadd(e.external_fvec, e.fvec)
@@ -497,6 +561,17 @@ export map_right_col = (x, y) ->
 	m = mget(x, y)
 	return m == 5
 
+export rect_collide = (pos1, sz1, pos2, sz2) ->
+	if pos1.x + sz1.x <= pos2.x
+		return false
+	if pos1.x >= pos2.x + sz2.x
+		return false
+	if pos1.y + sz1.y <= pos2.y
+		return false
+	if pos1.y >= pos2.y + sz2.y
+		return false
+	return true
+
 export in_rect = (pos, rect_pos, rect_sz) ->
 	if pos.x < rect_pos.x
 		return false
@@ -556,6 +631,13 @@ export vecshrink = (vec, n) ->
 
 	dir = vecnormalized(vec)
 	return vecmul(dir, len - n)
+
+export vec_from_rad = (rad) ->
+	base_vec = vecnew(-1, 0)
+	new_vec = vecnew(0, 0)
+	new_vec.x = base_vec.x * math.cos(rad) - base_vec.y * math.sin(rad)
+	new_vec.y = base_vec.x * math.sin(rad) + base_vec.y * math.cos(rad)
+	return new_vec
 
 export round = (n) ->
 	return math.floor(n + 0.5)
