@@ -34,6 +34,9 @@ export CRYSTAL_SUMMON_VEL = 1
 export SFX_JUMP = 0
 export SFX_SWIPE = 1
 export SFX_SWIPE_HIT = 2
+export SFX_THROW = 3
+export SFX_AIMING = 4
+export SFX_CRYSTAL_BOUNCE = 5
 
 export MAP_ENEMY_SLIME = 6
 export MAP_ENEMY_FLYING_CRITTER = 7
@@ -227,9 +230,12 @@ export player_update = (player) ->
 		if player.prev_btn_6_holding
 			dir = vec_from_rad(player.aim_rad)
 			crystal_bounce_new(player.pos, vecmul(dir, 4.5))
+			sfx(SFX_THROW)
 
 
 	else
+		if not player.prev_btn_6_holding
+			sfx(SFX_AIMING)
 		player_aim_mode(player)
 
 	player.prev_btn_6_holding = btn(6)
@@ -318,8 +324,10 @@ export crystal_bounce_new = (pos, efvec) ->
 export crystal_bounce_update = (crystal) ->
 	if crystal.up_col or crystal.down_col
 		crystal.external_fvec.y *= -1
+		sfx(SFX_CRYSTAL_BOUNCE)
 	if crystal.left_col or crystal.right_col
 		crystal.external_fvec.x *= -1
+		sfx(SFX_CRYSTAL_BOUNCE)
 	if veclength(crystal.external_fvec) < CRYSTAL_SUMMON_VEL
 		crystal.rm_next_frame = true
 		imp_new(crystal.pos)
@@ -460,6 +468,7 @@ export imp_new = (pos) ->
 	i = entity_new(pos, vecnew(0, 0), imp_update, imp_draw, nil)
 	i.t = 120
 	i.attack_t = 0
+	i.gravity_enabled = false
 	return i
 
 export imp_update = (imp) ->
@@ -489,7 +498,7 @@ export imp_draw = (imp) ->
 	draw_pos = get_draw_pos(imp.pos)
 	if DEBUG_DRAW_HITBOXES
 		circb(draw_pos.x, draw_pos.y, IMP_RANGE, 11)
-	spr(spr_id, draw_pos.x - 2, draw_pos.y - 4, 0, 1, flip, 0, 2, 2)
+	spr(spr_id, draw_pos.x - 8, draw_pos.y - 8, 0, 1, flip, 0, 2, 2)
 
 export entity_collision = (e) ->
 	for x = 0, e.sz.x//8
@@ -938,6 +947,9 @@ export entity_overlap = (e1, e2) ->
 -- 000:a10071035106611071208130a140b150c160c180d190d1a0e1b0e1d0e1f0f100f100f100f100f100f100f100f100f100f100f100f100f100f100f100400000004000
 -- 001:d1f071d041a06160b130d100f100f100f100f100f100f100f100f100f100f100f100f100f100f100f100f100f100f100f100f100f100f100f100f100400000000000
 -- 002:04057404a403c403d403e402f402f401f401f400f400f400f400f400f400f400f400f400f400f400f400f400f400f400f400f400f400f400f400f400c00000000000
+-- 003:d4f0b4d0a4b094909480a470b450c440d420d410e400e400f400f400f400f400f400f400f400f400f400f400f400f400f400f400f400f400f400f400500000000000
+-- 004:e200f201e201e203020302040203020302020200020e020d020d020e020f02070207020702060205020502040203020202020200020002000200020050000004000f
+-- 005:8000f000e000e000e000e000f000f000f000f000f000f000f000f000f000f000f000f000f000f000f000f000f000f000f000f000f000f000f000f000600000000000
 -- 032:010021003100510051005100510051005100510051005100510051005100510051005100510051005100510051005100510051005100510051005100200000000000
 -- 033:0305130323024301430073009300b300c300d300f300f300f300f300f300f300f300f300f300f300f300f300f300f300f300f300f300f300f300f300a00000000000
 -- 034:6400b400d400e400f400f400f400f400f400f400f400f400f400f400f400f400f400f400f400f400f400f400f400f400f400f400f400f400f400f400700000000000
