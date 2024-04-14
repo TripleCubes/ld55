@@ -12,6 +12,8 @@ export MAP_SCR_W = 30
 export MAP_SCR_H = 17
 export PLAYER_W = 8
 export PLAYER_H = 14
+SWIPE_W = 8
+SWIPE_H = 8
 export t = 0
 export entity_list = {}
 export player = {}
@@ -26,14 +28,15 @@ export camera_tweening_start_at = 0
 export CAMERA_TWEENING_TIME = 60
 
 SFX_JUMP = 0
+SFX_SWIPE = 1
 
 export BOOT = ->
 	game_init!
 
 export game_init = ->
 	init_view_room_list!
-	player = player_new(vecnew(10, 10))
-	camera.pos = vecnew(player.pos.x - WINDOW_W/2, player.pos.y - WINDOW_H/2)
+	player = player_new(vecnew(10, 60))
+	camera.pos = vecnew(0, player.pos.y - WINDOW_H/2)
 
 export TIC = ->
 	cls(0)
@@ -42,6 +45,7 @@ export TIC = ->
 
 export game_update = ->
 	entity_list_update!
+	entity_list_ckrm!
 	camera_update!
 
 	draw_pos = get_draw_pos(vecnew(0, 0))
@@ -137,25 +141,44 @@ export camera_update = ->
 export player_new = (pos) ->
 	p = entity_new(pos, vecnew(PLAYER_W, PLAYER_H), player_update, player_draw, nil)
 	p.right_dir = true
+	p.attack = 0
+	p.attack_t = t
+	p.attack_row = 0
 	return p
 
 export player_update = (player) ->
-	if btn(2)
-		player.right_dir = false
-		player.fvec.x -= 1
-	if btn(3)
-		player.right_dir = true
-		player.fvec.x += 1
-	if btnp(4) and player.down_col
-		player.gravity = -2
-		sfx(SFX_JUMP)
+	-- Can't move/jump if attacking on ground
+	if not player.down_col or player.attack == 0
+		if btn(2)
+			player.right_dir = false
+			player.fvec.x -= 1
+		if btn(3)
+			player.right_dir = true
+			player.fvec.x += 1
+		if btnp(4) and player.down_col
+			player.gravity = -2
+			sfx(SFX_JUMP)
+	if btn(5) and player.attack == 0
+		player.attack = 15
+		player.attack_t = t
+		player.attack_row = 1 - player.attack_row
+		dy = player.attack_row * 2
+		swipe_new(vecadd(player.pos, vecnew(0, dy)), player.right_dir)
+		sfx(SFX_SWIPE)
+	if player.attack > 0
+		player.attack -= 1
 	
 export player_draw = (player) ->
 	draw_pos = get_draw_pos(player.pos)
 
 	spr_id = 256
 
-	if not player.down_col
+	if player.attack > 0
+		d = (t - player.attack_t) // 5
+		if d > 2
+			d = 2
+		spr_id = 320 + d * 2 + player.attack_row * 32
+	elseif not player.down_col
 		-- Jumping/falling
 		if player.gravity < 0
 			spr_id = 266
@@ -179,6 +202,33 @@ export player_draw = (player) ->
 		flip = 0
 
 	spr(spr_id, draw_pos.x - 4, draw_pos.y - 2, 0, 1, flip, 0, 2, 2)
+
+export swipe_new = (pos, right_dir) ->
+	spos = vecadd(pos, vecnew(0, 0))
+	if right_dir
+		spos.x += 8
+	else
+		spos.x -= 8
+	s = entity_new(spos, vecnew(SWIPE_W, SWIPE_H), swipe_update, swipe_draw, nil)
+	s.right_dir = right_dir
+	s.t = 10
+	s.gravity_enabled = false
+	return s
+
+export swipe_update = (swipe) ->
+	swipe.t -= 1
+	if swipe.t == 0
+		swipe.rm_next_frame = true
+	
+export swipe_draw = (swipe) ->
+	spr_id = 478
+	flip = 1
+	if swipe.right_dir
+		flip = 0
+	if swipe.t > 5 != swipe.right_dir
+		flip += 2
+
+	spr(spr_id, swipe.pos.x - 4, swipe.pos.y - 2, 0, 1, flip, 0, 2, 2)
 
 export entity_collision = (e) ->
 	for x = 0, e.sz.x//8
@@ -220,12 +270,13 @@ export entity_collision = (e) ->
 			break
 
 export entity_physic = (e) ->
-	e.gravity += 0.1
-	if e.down_col and e.gravity > 0
-		e.gravity = 0
-	if e.up_col and e.gravity < 0
-		e.gravity = 0
-	e.fvec.y += e.gravity
+	if e.gravity_enabled
+		e.gravity += 0.1
+		if e.down_col and e.gravity > 0
+			e.gravity = 0
+		if e.up_col and e.gravity < 0
+			e.gravity = 0
+		e.fvec.y += e.gravity
 	entity_move_x(e)
 	entity_move_y(e)
 
@@ -482,6 +533,34 @@ export ease = (n) ->
 -- 033:000000000000000011000000111000001c1000001f100000cc100000c0210000
 -- 048:000100210000021100001111000cc011000000ff000000c0000000c0000000f0
 -- 049:120010001120000011110000110cc000ff0000000c0000000c0000000f000000
+-- 064:00000000000000000000001100000111000001110000011c0000111c0001120c
+-- 065:00000000000000001100000011100000c1100000fcf00000ccc00000cc200c00
+-- 066:00000000000000000000001100000111000001110000011c0000001200000012
+-- 067:00000000000000001100000011100000c1110000fcf00000ccc00000cc200000
+-- 068:000000000000000000000111000011110000111c000011cf0000112c0000122c
+-- 069:0000000000000000100000001100000011000000cf000000cc000000c2000000
+-- 080:00000021000000110000002200000022000000ff00000fff00000dd000000f00
+-- 081:12111200111120001112000022200000fff000000c0000000c0000000f000000
+-- 082:00000021000002110000c2210000002200000022000000ff00000dd000000f00
+-- 083:121c2000111120001112000021f00000fff000000c0000000c0000000f000000
+-- 084:0001021100000111000022110000c2220000022f00000fff00000d0000000f00
+-- 085:2100000011c000001220000010000000f0000000cd0000000c0000000f000000
+-- 096:000000000000000000000011000001110000011c000001cf0000021c00000021
+-- 097:0000000000000000110000001110000011100000c1f00000cc100000c0200000
+-- 098:000000000000000000000011000001110000011c000001cf000001cc0000120c
+-- 099:0000000000000000110000001110000011100000c1f00000cc100000c2000000
+-- 100:000000000000000000000011000001110000011c000001cf000001cc0000120c
+-- 101:0000000000000000110000001110000011100000c1f00000cc100000c0200000
+-- 112:000000220000021100002111000c10110000002f00000ff000000d0000000f00
+-- 113:122200001112000011c0000011000000ff000000cd0000000c0000000f000000
+-- 114:00001122000022110000c011000000110000ffff00000df000000d0000000f00
+-- 115:112000001112000011200000c2000000f0000000c0000000dc0000000f000000
+-- 116:000100220000021100000c1100000011000000ff000000d000000d0000000f00
+-- 117:11200000111200001c20000011000000ff0000000c0000000c0000000f000000
+-- 222:000000000000000000000000000cccc00000cccc0000000d0000000000000000
+-- 223:00000000000000000000000000000000cc000000dccc00000dddcc0000edddc0
+-- 238:00000000000000000000000f0000ffff000ffff0000000000000000000000000
+-- 239:00eeddc00feddd00feee0000ee00000000000000000000000000000000000000
 -- 252:433300003cc430003cc343003443343003443343003443c300034cc300003334
 -- 253:008888000812288081122888822cc228822cc228888228c808822c8000888800
 -- 254:00099000009ba90009bb9a909bbb99a99a99aac909a9ac90009ac90000099000
@@ -514,6 +593,7 @@ export ease = (n) ->
 
 -- <SFX>
 -- 000:a10071035106611071208130a140b150c160c180d190d1a0e1b0e1d0e1f0f100f100f100f100f100f100f100f100f100f100f100f100f100f100f100400000004000
+-- 001:d1f071d041a06160b130d100f100f100f100f100f100f100f100f100f100f100f100f100f100f100f100f100f100f100f100f100f100f100f100f100400000000000
 -- 032:010021003100510051005100510051005100510051005100510051005100510051005100510051005100510051005100510051005100510051005100200000000000
 -- 033:0305130323024301430073009300b300c300d300f300f300f300f300f300f300f300f300f300f300f300f300f300f300f300f300f300f300f300f300a00000000000
 -- 034:6400b400d400e400f400f400f400f400f400f400f400f400f400f400f400f400f400f400f400f400f400f400f400f400f400f400f400f400f400f400700000000000
