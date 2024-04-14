@@ -282,8 +282,11 @@ export player_draw = (player) ->
 	if btn(6)
 		dir = vec_from_rad(player.aim_rad)
 		player_center = vecadd(draw_pos, vecnew(PLAYER_W/2, PLAYER_H/2))
-		added = vecadd(player_center, vecmul(dir, 15))
-		line(player_center.x, player_center.y, added.x, added.y, 12)
+		for i = 0, 30
+			added = vecadd(player_center, vecmul(dir, 1))
+			if i > 8 and (t // 5 - i) % 4 == 0
+				line(player_center.x, player_center.y, added.x, added.y, 12)
+			player_center = added
 
 export swipe_new = (player, pos) ->
 	if player.right_dir
