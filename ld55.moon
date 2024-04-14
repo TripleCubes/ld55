@@ -165,8 +165,8 @@ export player_new = (pos) ->
 	p.attack = 0
 	p.attack_t = t
 	p.attack_row = 0
-	p.aim_mode = false
 	p.aim_rad = 0
+	p.prev_btn_6_holding = false
 	return p
 
 export player_movement = (player) ->
@@ -191,14 +191,13 @@ export player_movement = (player) ->
 	if player.attack > 0
 		player.attack -= 1
 
+export player_aim_mode = (player) ->
 	if btnp(6)
-		player.aim_mode = true
 		if player.right_dir
 			player.aim_rad = PI -- 180 degree
 		else
 			player.aim_rad = 0
 
-export player_aim_mode = (player) ->
 	if btn(2)
 		player.aim_rad -= 0.1
 		if player.aim_rad < 0
@@ -208,24 +207,23 @@ export player_aim_mode = (player) ->
 		if player.aim_rad > PI
 			player.aim_rad = PI
 	
-	if btnp(6)
-		player.aim_mode = false
-
 	if btnp(4) and player.down_col
 			player.gravity = -2
 			sfx(SFX_JUMP)
 
-	if btnp(5)
-		player.aim_mode = false
-		dir = vec_from_rad(player.aim_rad)
-		crystal_bounce_new(player.pos, vecmul(dir, 4))
-
 export player_update = (player) ->
-	if not player.aim_mode
+	if not btn(6)
 		player_movement(player)
 
-	elseif player.aim_mode
+		if player.prev_btn_6_holding
+			dir = vec_from_rad(player.aim_rad)
+			crystal_bounce_new(player.pos, vecmul(dir, 4))
+
+
+	else
 		player_aim_mode(player)
+
+	player.prev_btn_6_holding = btn(6)
 	
 export player_draw = (player) ->
 	draw_pos = get_draw_pos(player.pos)
@@ -244,7 +242,7 @@ export player_draw = (player) ->
 		else
 			spr_id = 268
 	else
-		if (btn(2) or btn(3)) and not player.aim_mode
+		if (btn(2) or btn(3)) and not btn(6)
 			-- walking (frames: 0, 1, 0, 2)
 			d = t // 8 % 4
 			if d == 2
@@ -263,7 +261,7 @@ export player_draw = (player) ->
 	spr(spr_id, draw_pos.x - 4, draw_pos.y - 2, 0, 1, flip, 0, 2, 2)
 
 
-	if player.aim_mode
+	if btn(6)
 		dir = vec_from_rad(player.aim_rad)
 		player_center = vecadd(draw_pos, vecnew(PLAYER_W/2, PLAYER_H/2))
 		added = vecadd(player_center, vecmul(dir, 15))
