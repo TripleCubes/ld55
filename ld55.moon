@@ -29,6 +29,7 @@ export camera_tweening_start_at = 0
 export CAMERA_TWEENING_TIME = 60
 
 export CRYSTAL_BOUNCE = 1
+export CRYSTAL_SUMMON_VEL = 1
 
 export SFX_JUMP = 0
 export SFX_SWIPE = 1
@@ -41,6 +42,8 @@ export SLIME_H = 12
 export LAYER_NONE = 0
 export LAYER_SWIPES = 1
 export LAYER_ENEMIES = 2
+
+export IMP_RANGE = 32
 
 DEBUG_DRAW_HITBOXES = true
 
@@ -311,10 +314,13 @@ export crystal_bounce_update = (crystal) ->
 		crystal.external_fvec.y *= -1
 	if crystal.left_col or crystal.right_col
 		crystal.external_fvec.x *= -1
+	if veclength(crystal.external_fvec) < CRYSTAL_SUMMON_VEL
+		crystal.rm_next_frame = true
+		imp_new(crystal.pos)
 
 export crystal_bounce_draw = (crystal) ->
 	draw_pos = get_draw_pos(crystal.pos)
-	spr_id = 510
+	spr_id = 509
 	spr(spr_id, draw_pos.x, draw_pos.y, 0, 1, 0, 0, 1, 1)
 
 export enemy_new = (pos) ->
@@ -358,6 +364,41 @@ export enemy_draw = (enemy) ->
 		left_col_point = vecnew(draw_pos.x-1, draw_pos.y + enemy.sz.y-1)
 		pix(right_col_point.x, right_col_point.y, 4)
 		pix(left_col_point.x, left_col_point.y, 4)
+	spr(spr_id, draw_pos.x - 2, draw_pos.y - 4, 0, 1, flip, 0, 2, 2)
+
+export imp_new = (pos) ->
+	i = entity_new(pos, vecnew(0, 0), imp_update, imp_draw, nil)
+	i.t = 120
+	i.attack_t = 0
+	return i
+
+export imp_update = (imp) ->
+	imp.t -= 1
+	if imp.t == 0
+		imp.rm_next_frame = true
+		-- TODO: despawn animation
+	imp.attack_t -= 1
+	if imp.attack_t <= 0
+		imp.attack_t = 10
+		-- Acquire random new target in range
+		targets = {}
+		for i, v in ipairs(entity_list)
+			if v.layer == LAYER_ENEMIES and v.hp > 0 and veclength(vecsub(v.pos, imp.pos)) <= IMP_RANGE
+				table.insert(targets, v)
+		if #targets > 0
+			target = targets[math.random(#targets)]
+			target.hp -= 5
+			-- TODO SFX, gfx
+	
+export imp_draw = (imp) ->
+	spr_id = 444
+	if imp.t % 20 < 10
+		spr_id += 2
+	flip = 0
+
+	draw_pos = get_draw_pos(imp.pos)
+	if DEBUG_DRAW_HITBOXES
+		circb(draw_pos.x, draw_pos.y, IMP_RANGE, 11)
 	spr(spr_id, draw_pos.x - 2, draw_pos.y - 4, 0, 1, flip, 0, 2, 2)
 
 export entity_collision = (e) ->
@@ -743,6 +784,14 @@ export entity_overlap = (e1, e2) ->
 -- 115:112000001112000011200000c2000000f0000000c0000000dc0000000f000000
 -- 116:000100220000021100000c1100000011000000ff000000d000000d0000000f00
 -- 117:11200000111200001c20000011000000ff0000000c0000000c0000000f000000
+-- 188:00000000000000000004000000044488000048880000888800008811000888ff
+-- 189:000000000000000000004000884440008884000088880000111800001ff88000
+-- 190:000000000004000000044488000048880000888800008811000888ff00008111
+-- 191:0000000000004000884440008884000088880000111800001ff8800011180000
+-- 204:00808111008800110828880800022088000800880000088000000f0000000000
+-- 205:111808001100880080888280880228008800800088000000f000000000000000
+-- 206:000000110000880800088088008880880008088000000f000000000000000000
+-- 207:1100000080880000880880008808880088080000f00000000000000000000000
 -- 222:000000000000000000000000000cccc00000cccc0000000d0000000000000000
 -- 223:00000000000000000000000000000000cc000000dccc00000dddcc0000edddc0
 -- 224:0000000000000000000000000000000000000000000000000000000000000077
