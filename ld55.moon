@@ -163,7 +163,7 @@ export player_update = (player) ->
 		player.attack_t = t
 		player.attack_row = 1 - player.attack_row
 		dy = player.attack_row * 2
-		swipe_new(vecadd(player.pos, vecnew(0, dy)), player.right_dir)
+		swipe_new(player, vecnew(0, dy))
 		sfx(SFX_SWIPE)
 	if player.attack > 0
 		player.attack -= 1
@@ -203,32 +203,34 @@ export player_draw = (player) ->
 
 	spr(spr_id, draw_pos.x - 4, draw_pos.y - 2, 0, 1, flip, 0, 2, 2)
 
-export swipe_new = (pos, right_dir) ->
-	spos = vecadd(pos, vecnew(0, 0))
-	if right_dir
-		spos.x += 8
+export swipe_new = (player, pos) ->
+	if player.right_dir
+		pos.x += 8
 	else
-		spos.x -= 8
-	s = entity_new(spos, vecnew(SWIPE_W, SWIPE_H), swipe_update, swipe_draw, nil)
-	s.right_dir = right_dir
+		pos.x -= 8
+	s = entity_new(pos, vecnew(SWIPE_W, SWIPE_H), swipe_update, swipe_draw, nil)
+	s.pos_d = pos
 	s.t = 10
 	s.gravity_enabled = false
+	s.parent = player
 	return s
 
 export swipe_update = (swipe) ->
 	swipe.t -= 1
 	if swipe.t == 0
 		swipe.rm_next_frame = true
+	swipe.pos = vecadd(swipe.parent.pos, swipe.pos_d)
 	
 export swipe_draw = (swipe) ->
 	spr_id = 478
 	flip = 1
-	if swipe.right_dir
+	if swipe.parent.right_dir
 		flip = 0
-	if swipe.t > 5 != swipe.right_dir
+	if swipe.t > 5 != swipe.parent.right_dir
 		flip += 2
 
-	spr(spr_id, swipe.pos.x - 4, swipe.pos.y - 2, 0, 1, flip, 0, 2, 2)
+	draw_pos = get_draw_pos(swipe.pos)
+	spr(spr_id, draw_pos.x - 4, draw_pos.y - 2, 0, 1, flip, 0, 2, 2)
 
 export entity_collision = (e) ->
 	for x = 0, e.sz.x//8
