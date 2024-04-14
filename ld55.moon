@@ -501,43 +501,45 @@ export imp_draw = (imp) ->
 	spr(spr_id, draw_pos.x - 8, draw_pos.y - 8, 0, 1, flip, 0, 2, 2)
 
 export entity_collision = (e) ->
-	for x = 0, e.sz.x//8
-		add = vecnew(x*8, e.sz.y)
-		if x == e.sz.x//8
-			add.x -= 1
-		pos = vecadd(e.pos, add)
-		if map_col(pos.x//8, pos.y//8)
-			if pos.y == floor2(pos.y, 8)
+	fvec = vecadd(e.fvec, e.external_fvec)
+
+	if fvec.y >= 0
+		for x = 0, e.sz.x//8
+			add = vecnew(x*8, e.sz.y)
+			if x == e.sz.x//8
+				add.x -= 1
+			pos = vecadd(e.pos, add)
+			if map_solid(pos.x//8, pos.y//8) or map_up_col(pos.x//8, pos.y//8)
 				e.down_col = true
 				break
 
-	for x = 0, e.sz.x//8
-		add = vecnew(x*8, -1)
-		if x == e.sz.x//8
-			add.x -= 1
-		pos = vecadd(e.pos, add)
-		if map_col(pos.x//8, pos.y//8)
-			if pos.y == floor2(pos.y, 8) + 7
+	if fvec.y <= 0
+		for x = 0, e.sz.x//8
+			add = vecnew(x*8, -1)
+			if x == e.sz.x//8
+				add.x -= 1
+			pos = vecadd(e.pos, add)
+			if map_solid(pos.x//8, pos.y//8) or map_down_col(pos.x//8, pos.y//8)
 				e.up_col = true
 				break
 
-	for y = 0, e.sz.y//8
-		add = vecnew(-1, y*8)
-		if y == e.sz.y//8
-			add.y -= 1
-		pos = vecadd(e.pos, add)
-		if map_col(pos.x//8, pos.y//8)
-			if pos.x == floor2(pos.x, 8) + 7
+	if fvec.x <= 0
+		for y = 0, e.sz.y//8
+			add = vecnew(-1, y*8)
+			if y == e.sz.y//8
+				add.y -= 1
+			pos = vecadd(e.pos, add)
+			if map_solid(pos.x//8, pos.y//8) or map_right_col(pos.x//8, pos.y//8)
 				e.left_col = true
 				break
 
-	for y = 0, e.sz.y//8
-		add = vecnew(e.sz.x, y*8)
-		if y == e.sz.y//8
-			add.y -= 1
-		pos = vecadd(e.pos, add)
-		if map_col(pos.x//8, pos.y//8)
-			if pos.x <= floor2(pos.x, 8)
+	if fvec.x >= 0
+		for y = 0, e.sz.y//8
+			add = vecnew(e.sz.x, y*8)
+			if y == e.sz.y//8
+				add.y -= 1
+			pos = vecadd(e.pos, add)
+			if map_solid(pos.x//8, pos.y//8) or map_left_col(pos.x//8, pos.y//8)
 				e.right_col = true
 				break
 
@@ -653,9 +655,9 @@ export entity_list_update = () ->
 		v.down_col = false
 		v.left_col = false
 		v.right_col = false
-		v.fvec = vecnew(0, 0)
 
 		entity_collision(v)
+		v.fvec = vecnew(0, 0)
 		v.update(v)
 
 		if v.default_physic
