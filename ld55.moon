@@ -322,12 +322,15 @@ export crystal_bounce_new = (pos, efvec) ->
 	crystal.external_fvec = veccopy(efvec)
 
 export crystal_bounce_update = (crystal) ->
+	bounce = 0
 	if crystal.up_col or crystal.down_col
 		crystal.external_fvec.y *= -1
-		sfx(SFX_CRYSTAL_BOUNCE)
+		bounce += math.abs(crystal.external_fvec.y)
 	if crystal.left_col or crystal.right_col
 		crystal.external_fvec.x *= -1
-		sfx(SFX_CRYSTAL_BOUNCE)
+		bounce += math.abs(crystal.external_fvec.x)
+	if bounce > 1
+		sfx(SFX_CRYSTAL_BOUNCE,70,30,0,15,math.min(15,bounce - 1))
 	if veclength(crystal.external_fvec) < CRYSTAL_SUMMON_VEL
 		crystal.rm_next_frame = true
 		imp_new(crystal.pos)
