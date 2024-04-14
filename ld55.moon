@@ -52,6 +52,8 @@ export LAYER_ENEMIES = 2
 
 export IMP_RANGE = 32
 
+export BTN_THROW = 5
+
 export DEBUG_DRAW_HITBOXES = true
 
 export BOOT = ->
@@ -185,29 +187,18 @@ export player_new = (pos) ->
 	return p
 
 export player_movement = (player) ->
-	-- Can't move/jump if attacking on ground
-	if not player.down_col or player.attack == 0
-		if btn(2)
-			player.right_dir = false
-			player.fvec.x -= 1
-		if btn(3)
-			player.right_dir = true
-			player.fvec.x += 1
-		if btnp(4) and player.down_col
-			player.gravity = -2
-			sfx(SFX_JUMP)
-	if btn(5) and player.attack == 0
-		player.attack = 15
-		player.attack_t = t
-		player.attack_row = 1 - player.attack_row
-		dy = player.attack_row * 2
-		swipe_new(player, vecnew(0, dy))
-		sfx(SFX_SWIPE)
-	if player.attack > 0
-		player.attack -= 1
+	if btn(2)
+		player.right_dir = false
+		player.fvec.x -= 1
+	if btn(3)
+		player.right_dir = true
+		player.fvec.x += 1
+	if btnp(4) and player.down_col
+		player.gravity = -2
+		sfx(SFX_JUMP)
 
 export player_aim_mode = (player) ->
-	if btnp(6)
+	if btnp(BTN_THROW)
 		if player.right_dir
 			player.aim_rad = PI -- 180 degree
 		else
@@ -223,17 +214,22 @@ export player_aim_mode = (player) ->
 			player.aim_rad = PI
 	
 	if btnp(4) and player.down_col
-			player.gravity = -2
-			sfx(SFX_JUMP)
+		player.gravity = -2
+		sfx(SFX_JUMP)
 
 export player_update = (player) ->
-	if not btn(6)
+	if player.attack > 0
+		player.attack -= 1
+	if not btn(BTN_THROW)
 		player_movement(player)
 
 		if player.prev_btn_6_holding
 			dir = vec_from_rad(player.aim_rad)
 			crystal_bounce_new(player.pos, vecmul(dir, 4.5))
 			sfx(SFX_THROW)
+			player.attack = 15
+			player.attack_t = t
+			player.attack_row = 1 - player.attack_row
 
 
 	else
@@ -241,14 +237,15 @@ export player_update = (player) ->
 			sfx(SFX_AIMING)
 		player_aim_mode(player)
 
-	player.prev_btn_6_holding = btn(6)
+	player.prev_btn_6_holding = btn(BTN_THROW)
 	
 export player_draw = (player) ->
 	draw_pos = get_draw_pos(player.pos)
 
 	spr_id = 256
-
-	if player.attack > 0
+	if player.prev_btn_6_holding
+		spr_id = 320
+	elseif player.attack > 0
 		d = (t - player.attack_t) // 5
 		if d > 2
 			d = 2
@@ -260,7 +257,7 @@ export player_draw = (player) ->
 		else
 			spr_id = 268
 	else
-		if (btn(2) or btn(3)) and not btn(6)
+		if (btn(2) or btn(3)) and not btn(BTN_THROW)
 			-- walking (frames: 0, 1, 0, 2)
 			d = t // 8 % 4
 			if d == 2
@@ -279,7 +276,7 @@ export player_draw = (player) ->
 	spr(spr_id, draw_pos.x - 4, draw_pos.y - 2, 0, 1, flip, 0, 2, 2)
 
 
-	if btn(6)
+	if btn(BTN_THROW)
 		dir = vec_from_rad(player.aim_rad)
 		player_center = vecadd(draw_pos, vecnew(PLAYER_W/2, PLAYER_H/2))
 		for i = 0, 30
@@ -422,6 +419,8 @@ export enemy_flying_critter_update = (e) ->
 	e.t -= 1
 	if e.t == 0
 		e.t = 20
+	if e.hp <= 0
+		e.rm_next_frame = true
 	e_center = entity_get_center(e)
 	following_center = entity_get_center(e.following)
 	dist = veclength(vecsub(e_center, following_center))
