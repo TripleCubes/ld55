@@ -378,6 +378,7 @@ export imp_new = (pos) ->
 	i = entity_new(pos, vecnew(0, 0), imp_update, imp_draw, nil)
 	i.t = 120
 	i.attack_t = 0
+	i.gravity_enabled = false
 	return i
 
 export imp_update = (imp) ->
@@ -407,7 +408,7 @@ export imp_draw = (imp) ->
 	draw_pos = get_draw_pos(imp.pos)
 	if DEBUG_DRAW_HITBOXES
 		circb(draw_pos.x, draw_pos.y, IMP_RANGE, 11)
-	spr(spr_id, draw_pos.x - 2, draw_pos.y - 4, 0, 1, flip, 0, 2, 2)
+	spr(spr_id, draw_pos.x - 8, draw_pos.y - 8, 0, 1, flip, 0, 2, 2)
 
 export entity_collision = (e) ->
 	for x = 0, e.sz.x//8
