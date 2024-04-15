@@ -209,14 +209,32 @@ export player_aim_mode = (player) ->
 		else
 			player.aim_rad = 0
 
-	if btn(2)
-		player.aim_rad -= 0.1
-		if player.aim_rad < 0
-			player.aim_rad = 0
-	if btn(3)
-		player.aim_rad += 0.1
-		if player.aim_rad > PI
-			player.aim_rad = PI
+	target_angle = nil
+	if btn(0)
+		if btn(2)
+			-- upleft
+			target_angle = PI / 4
+		elseif btn(3)
+			-- upright
+			target_angle = 3*PI / 4
+		else
+			-- up
+			target_angle = PI / 2
+	elseif btn(2)
+		-- left
+		target_angle = 0
+	elseif btn(3)
+		-- right
+		target_angle = PI
+	elseif btn(1)
+		-- down
+		if player.aim_rad < PI / 2
+			target_angle = 0
+		else
+			target_angle = PI
+	if target_angle != nil
+		dr = clamp(target_angle - player.aim_rad, -0.1, 0.1)
+		player.aim_rad += dr
 	
 	if btnp(4) and player.down_col
 		player.gravity = -2
@@ -881,6 +899,9 @@ export ease = (n) ->
 
 export entity_overlap = (e1, e2) ->
 	return e1.pos.x+e1.sz.x>e2.pos.x and e2.pos.x+e2.sz.x>e1.pos.x and e1.pos.y+e1.sz.y>e2.pos.y and e2.pos.y+e2.sz.y>e1.pos.y
+
+export clamp = (v, min, max) ->
+	return math.min(math.max(v, min), max)
 
 -- <TILES>
 -- 001:fdedffefdfefffedeedfeeddfddffedfeeffedffdffeedfedfeeddfefedfdfef
