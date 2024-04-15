@@ -1273,7 +1273,7 @@ export crystal_collectable_new = (pos, crystal_type) ->
 	e.crystal_type = crystal_type
 
 export crystal_collectable_update = (e) ->
-	if rect_collide(e.pos, e.sz, player.pos, player.sz)
+	if rect_collide(e.pos, e.sz, player.pos, player.sz) and #inventory < 3
 		e.rm_next_frame = true
 		table.insert(inventory, e.crystal_type)
 
@@ -1304,7 +1304,7 @@ export crystal_spawner_update = (e) ->
 		e.has_crystal = true
 		crystal_collectable_new(e.pos, e.crystal_type)
 
-	if rect_collide(e.pos, e.sz, player.pos, player.sz) and e.has_crystal
+	if rect_collide(e.pos, e.sz, player.pos, player.sz) and e.has_crystal and #inventory < 3
 		e.has_crystal = false
 		e.cooldown = e.cooldown_max
 
