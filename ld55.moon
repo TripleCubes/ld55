@@ -52,10 +52,13 @@ export MAP_CRYSTAL_BLUE = 10
 export MAP_CRYSTAL_GREEN = 11
 export SLIME_W = 12
 export SLIME_H = 12
+export WATER_RADIUS = 3
+export WATER_SPAWN_INTERVAL = 8
 
 export LAYER_NONE = 0
 export LAYER_SWIPES = 1
 export LAYER_ENEMIES = 2
+export LAYER_WATER = 3
 
 export CRYSTAL_YELLOW = 0
 export CRYSTAL_RED = 1
@@ -532,25 +535,26 @@ export swipe_draw = (swipe) ->
 
 export blackhole_new = (pos, range) ->
 	e = entity_new(pos, vecnew(8, 8), blackhole_update, blackhole_draw, nil)
-	e.range = range
 	e.default_physic = false
+	e.t = 200
 
 	return e
 
 export blackhole_update = (e) ->
-	blackhole_center = entity_get_center(e)
-	for i, v in ipairs(entity_list)
-		enemy_center = entity_get_center(v)
-		dist = veclength(vecsub(blackhole_center, enemy_center))
-		if v.layer == LAYER_ENEMIES and dist <= e.range
-			dir = vecnormalized(vecsub(blackhole_center, enemy_center))
-			v.external_fvec = vecmul(dir, 1)
+	e.t -= 1
+	if e.t == 0
+		e.rm_next_frame = true
+		timed_ent_new(e.pos, 16, {414, 412}, 8, vecnew(-16, -16), 2, 2, 2)
+		sfx(SFX_UNSUMMON)
+	if e.t % WATER_SPAWN_INTERVAL == 0
+		water_new(vecadd(e.pos, vecnew(-6, -8)), vecnew((math.random() - 0.5) * 0.7, -2))
 
 export blackhole_draw = (e) ->
 	spr_id = 388
-	draw_pos = get_draw_pos(e.pos)
+	if t % 10 < 5
+		spr_id += 2
+	draw_pos = vecadd(get_draw_pos(e.pos), vecmul(vecnew(math.random(-1, 1), math.random(-1, 1)), 0.6))
 	spr(spr_id, draw_pos.x - 8, draw_pos.y - 8, 0, 1, 0, 0, 2, 2)
-	circb(draw_pos.x, draw_pos.y, e.range, 12)
 
 export angel_new = (pos, following) ->
 	angel = entity_new(pos, vecnew(8, 8), angel_update, angel_draw, nil)
@@ -638,15 +642,21 @@ export crystal_fast_new = (pos, efvec) ->
 
 export crystal_fast_update = (crystal) ->
 	crystal.fvec = crystal.efvec
+	spawn = false
 	if entity_col(crystal)
-		crystal.rm_next_frame = true
-		blackhole_new(entity_get_center(crystal), 30)
+		spawn = true
 
 	for i, v in ipairs(entity_list)
 		if v.layer == LAYER_ENEMIES and rect_collide(crystal.pos, crystal.sz, v.pos, v.sz)
-			crystal.rm_next_frame = true
-			blackhole_new(entity_get_center(crystal), 30)
+			spawn = true
 			break
+
+	if spawn
+		crystal.rm_next_frame = true
+		center = entity_get_center(crystal)
+		blackhole_new(center)
+		timed_ent_new(center, 10, {412, 414}, 5, vecnew(-16, -16), 2, 2, 2)
+		sfx(SFX_SUMMON)
 
 export crystal_fast_draw = (crystal) ->
 	draw_pos = get_draw_pos(crystal.pos)
@@ -778,6 +788,35 @@ export projectile_draw = (pjt) ->
 	draw_pos = get_draw_pos(pjt.pos)
 	tail_pos = vecadd(draw_pos, vecmul(pjt.dir, 5))
 	line(draw_pos.x, draw_pos.y, tail_pos.x, tail_pos.y, pjt.color)
+
+export water_new = (pos, fvec) ->
+	e = entity_new(pos, vecnew(8, 8), water_update, water_draw, nil)
+	e.t = 200
+	e.layer = LAYER_WATER
+	e.external_fvec = fvec
+	return e
+
+export water_update = (e) ->
+	e.t -= 1
+	if e.t == 0
+		e.rm_next_frame = true
+	
+	center = entity_get_center(e)
+	for i, v in ipairs(entity_list)
+		enemy_center = entity_get_center(v)
+		dist = veclength(vecsub(center, enemy_center))
+		-- Repel enemies
+		if v.layer == LAYER_ENEMIES and dist <= WATER_RADIUS
+			dir = vecnormalized(vecsub(center, enemy_center))
+			v.external_fvec = vecadd(v.external_fvec, vecmul(dir, -1))
+			v.external_fvec.y -= 0.3	-- buoyancy
+		if v.layer == LAYER_WATER and dist <= WATER_RADIUS
+			dir = vecnormalized(vecsub(center, enemy_center))
+			v.external_fvec = vecadd(v.external_fvec, vecmul(dir, -0.3))
+	
+export water_draw = (e) ->
+	draw_pos = get_draw_pos(entity_get_center(e))
+	circ(draw_pos.x, draw_pos.y, WATER_RADIUS, 9)
 
 export enemy_flying_critter_new = (pos) ->
 	e = entity_new(pos, vecnew(8, 8), enemy_flying_critter_update, enemy_flying_critter_draw, nil)
@@ -1256,6 +1295,8 @@ export veclength = (vec) ->
 
 export vecnormalized = (vec) ->
 	len = veclength(vec)
+	if len == 0
+		return { x: 0, y: 0 }
 	return { x: vec.x/len, y: vec.y/len }
 
 export vecequals = (veca, vecb) ->
