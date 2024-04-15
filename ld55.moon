@@ -494,7 +494,7 @@ export blackhole_update = (e) ->
 			v.external_fvec = vecmul(dir, 1)
 
 export blackhole_draw = (e) ->
-	spr_id = 386
+	spr_id = 388
 	draw_pos = get_draw_pos(e.pos)
 	spr(spr_id, draw_pos.x - 8, draw_pos.y - 8, 0, 1, 0, 0, 2, 2)
 	circb(draw_pos.x, draw_pos.y, e.range, 12)
@@ -502,6 +502,7 @@ export blackhole_draw = (e) ->
 export angel_new = (pos, following) ->
 	angel = entity_new(pos, vecnew(8, 8), angel_update, angel_draw, nil)
 	angel.gravity_enabled = false
+	angel.t = 0
 	
 	angel.following = following
 	angel.following_range = 20
@@ -554,13 +555,19 @@ export angel_update = (e) ->
 		angel_in_sight(e)
 		angel_attack(e)
 
+	e.t -= 1
+	if e.t <= 0
+		e.t = 16
+
 	if e.following == nil or e.following.hp <= 0
 		e.rm_next_frame = true
 
 export angel_draw = (angle) ->
 	draw_pos = get_draw_pos(angle.pos)
 	spr_id = 384
-	spr(spr_id, draw_pos.x - 4, draw_pos.y - 4, 0, 1, 0, 0, 2, 2)
+	if angle.t % 16 < 8
+		spr_id += 2
+	spr(spr_id, draw_pos.x - 8, draw_pos.y - 8, 0, 1, 0, 0, 2, 2)
 
 export crystal_fast_new = (pos, efvec) ->
 	crystal = entity_new(pos, vecnew(8, 8), crystal_fast_update, crystal_fast_draw, nil)
@@ -586,15 +593,18 @@ export crystal_fast_draw = (crystal) ->
 	spr(spr_id, draw_pos.x, draw_pos.y, 0, 1, 0, 0, 1, 1)
 
 export crysral_fast_draw = (crystal) ->
+	spr(spr_id, draw_pos.x - 4, draw_pos.y - 4, 0, 1, 0, 0, 2, 2)
 
 export crystal_no_bounce_new = (pos, efvec) ->
 	crystal = entity_new(pos, vecnew(8, 8), crystal_no_bounce_update, crystal_no_bounce_draw, nil)
 	crystal.external_fvec = veccopy(efvec)
 
 export crystal_no_bounce_update = (crystal) ->
+	crystal_center = entity_get_center(crystal)
 	if entity_col(crystal)
-		crystal_center = entity_get_center(crystal)
 		crystal.rm_next_frame = true
+		timed_ent_new(crystal_center, 10, {412, 414}, 5, vecnew(-8, -8), 1, 2, 2)
+		sfx(SFX_CRYSTAL_BOUNCE)
 
 	for i, v in ipairs(entity_list)
 		if v.layer == LAYER_ENEMIES
@@ -602,6 +612,8 @@ export crystal_no_bounce_update = (crystal) ->
 			if dist <= 30
 				crystal.rm_next_frame = true
 				angel_new(crystal.pos, v)
+				timed_ent_new(crystal_center, 10, {412, 414}, 5, vecnew(-16, -16), 2, 2, 2)
+				sfx(SFX_SUMMON)
 				return
 
 export crystal_no_bounce_draw = (crystal) ->
@@ -1277,14 +1289,18 @@ export clamp = (v, min, max) ->
 -- 115:112000001112000011200000c2000000f0000000c0000000dc0000000f000000
 -- 116:000100220000021100000c1100000011000000ff000000d000000d0000000f00
 -- 117:11200000111200001c20000011000000ff0000000c0000000c0000000f000000
--- 128:00000ccc000ccc0000cc000000c000000cc00000cc000000c0000000c0000000
--- 129:ccccc0000000c00000000c0000000cc0000000cc0000000c0000000c0000000c
--- 130:0000000000000ee000000e000000e0ee000e0e00000ee000000000000000000e
--- 131:0000e00000ee0000eee000000e0000000e000000e0000000e0000ee0000eeee0
--- 144:c0000000cc0000000c0000000cc0000000cc0000000cc0000000ccc0000000cc
--- 145:0000000c0000000c000000cc000000c000000cc00000cc000cccc000cc000000
--- 146:000000e000000e0000000e0e0000e0e0000e0e00000ee0000000000000000000
--- 147:0ee00e00e000e000000e000000e0000000ee0000000000000000000000000000
+-- 128:00000444000000000000000000000aaa9000aaaaa900a4c49990a4f4a990a444
+-- 129:440000000000000000000000aa000000aaa00090c4a009a0f4a0999044a099a0
+-- 130:00000444000000000000000000000aaa0000aaaa0000a4c40000a4f49000a444
+-- 131:440000000000000000000000aa000000aaa00000c4a00000f4a0000044a00090
+-- 132:000000000000ee00000e0000000e000000e0000000e0000e0e0000ee0e000eee
+-- 133:00000000000000000000000000000000000ee000eeee0000e00e000000e00000
+-- 144:0a90a04400a0abbb000bbbbb0000bbbb00000440000004000000000000000000
+-- 145:40a09a00bba0a000bbbb0000bbb0000044000000400000000000000000000000
+-- 146:9990a04499a0abbb9a0bbbbba000bbbb00000440000004000000000000000000
+-- 147:40a09990bba0a990bbbb0a90bbb000a044000000400000000000000000000000
+-- 148:e000e0e0e00e0e00e0e0e000ee000000e0000000000000000000000000000000
+-- 149:0e0000000e000000e0e00000eee0000000e000000ee000000ee0000000000000
 -- 155:00000000040004000040c40000c44000000c4c000004c440004c004000400000
 -- 156:0000000000000000000000000000000000000033000033430000344400033444
 -- 157:0000000000000000000000000000000000000000303000003333000044333000
