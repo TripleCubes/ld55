@@ -193,7 +193,6 @@ class TitleState extends SkipState
 	draw:=>
 		super!
 		-- draw image
-		--loadpalette("00002d8a2029534749461752ff166b1b43e3dda3733e873019cc0ff908ec3c5c25be1ffffca487aff5fffffff")
 		val_i=0
 		run=0
 		for y=0,136-1
@@ -203,9 +202,7 @@ class TitleState extends SkipState
 					run=@img_runs[val_i]
 				run=run-1
 				pix(x,y,@img_values[val_i])
-		-- reset palette
-		--loadpalette("1a1c2cff9696f06c6eef7d57ffcd75a7f07038b764257179a11c003b5dc941a6f673eff7f4f4f494b0c2566c86333c57")
-		print("TITLE SCREEN\nPress Z or X to continue", 10, 10, 11)
+		print("Press Z or X to continue", 10, 122, 12)
 		@button\draw!
 
 class GameState extends State
@@ -1697,7 +1694,7 @@ export palset=(c0,c1)->
 -- 241:56700000556700005f5700005f56700055557000555c7000ccc6700077770000
 -- 242:0000007700000765000076c500076cf5007655f5007566550076555500077777
 -- 243:7700000056700000556700005f5670005f55670055555700cccc670077777000
--- 251:dddddddd0dddddd000dddd0000dddd0000dddd00dddddddddddddddddddddddd
+-- 251:cddddeef0ceeeef000cdef0000cdef0000cdef000cddeef0cccccdefddeeeeff
 -- 252:433300003cc430003cc343003443343003443343003443c300034cc300003334
 -- 253:008888000812288081122888822cc228822cc228888228c808822c8000888800
 -- 254:00099000009ba90009bb9a909bbb99a99a99aac909a9ac90009ac90000099000
