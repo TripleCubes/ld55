@@ -1237,7 +1237,7 @@ export crystal_spawner_update = (e) ->
 		e.has_crystal = true
 		crystal_collectable_new(e.pos, e.crystal_type)
 
-	if rect_collide(e.pos, e.sz, player.pos, player.sz)
+	if rect_collide(e.pos, e.sz, player.pos, player.sz) and e.has_crystal
 		e.has_crystal = false
 		e.cooldown = e.cooldown_max
 
