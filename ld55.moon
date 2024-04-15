@@ -775,12 +775,10 @@ export croc_draw = (e) ->
 -- Fish
 export crystal_fast_new = (pos, efvec) ->
 	crystal = entity_new(pos, vecnew(8, 8), crystal_fast_update, crystal_fast_draw, nil)
-	crystal.gravity_enabled = false
-	crystal.efvec = veccopy(efvec)
+	crystal.external_fvec = veccopy(efvec)
 	return crystal
 
 export crystal_fast_update = (crystal) ->
-	crystal.fvec = crystal.efvec
 	spawn = false
 	if entity_col(crystal)
 		spawn = true
@@ -805,9 +803,11 @@ export crystal_fast_draw = (crystal) ->
 -- Angel
 export crystal_no_bounce_new = (pos, efvec) ->
 	crystal = entity_new(pos, vecnew(8, 8), crystal_no_bounce_update, crystal_no_bounce_draw, nil)
-	crystal.external_fvec = veccopy(efvec)
+	crystal.gravity_enabled = false
+	crystal.efvec = veccopy(efvec)
 
 export crystal_no_bounce_update = (crystal) ->
+	crystal.fvec = crystal.efvec
 	crystal_center = entity_get_center(crystal)
 	if entity_col(crystal)
 		crystal.rm_next_frame = true
