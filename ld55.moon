@@ -1436,7 +1436,7 @@ export map_col = (x, y) ->
 
 export map_solid = (x, y) ->
 	m = mget(x, y)
-	return m == 1
+	return m == 1 or m == 17 or m == 33 or m == 49
 
 export map_up_col = (x, y) ->
 	m = mget(x, y)
@@ -1582,6 +1582,9 @@ export palset=(c0,c1)->
 -- 014:0000000000000000000bb000000bb0000000000000000000eeeeeeeeeeeeeeee
 -- 015:000000000000000000055000000550000000000000000000eeeeeeeeeeeeeeee
 -- 016:0000000000100100011111100111111000111100000110000000000000000000
+-- 017:fddefedfdffedefddefddfeefefffeddddeedfdffddffffdeffeddfefeeefdff
+-- 033:655656566766767677777777fddffedfedffedffeffeeffedfdddfeefefffeef
+-- 049:fefdfddfeeddfffddfffeefdfefeedeffdfdfddfddffeffeffeddffdeedffedf
 -- </TILES>
 
 -- <SPRITES>
