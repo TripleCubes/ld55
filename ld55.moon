@@ -367,7 +367,7 @@ export player_aim_mode = (player) ->
 		else
 			target_angle = PI
 	if target_angle != nil
-		dr = clamp(target_angle - player.aim_rad, -0.1, 0.1)
+		dr = clamp(target_angle - player.aim_rad, -0.05, 0.05)
 		player.aim_rad += dr
 
 	player.right_dir = player.aim_rad >= PI / 2
@@ -384,12 +384,11 @@ export player_update = (player) ->
 
 		if player.prev_btn_6_holding
 			dir = vec_from_rad(player.aim_rad)
-			crystal_no_bounce_new(player.pos, vecmul(dir, 4.5))
+			crystal_fast_new(player.pos, vecmul(dir, 4.5))
 			sfx(SFX_THROW)
 			player.attack = 15
 			player.attack_t = t
 			player.attack_row = 1 - player.attack_row
-
 
 	else
 		if not player.prev_btn_6_holding
@@ -478,8 +477,30 @@ export swipe_draw = (swipe) ->
 		rectb(draw_pos.x, draw_pos.y, swipe.sz.x, swipe.sz.y, 11)
 	spr(spr_id, draw_pos.x, draw_pos.y, 0, 1, flip, 0, 2, 2)
 
+export blackhole_new = (pos, range) ->
+	e = entity_new(pos, vecnew(8, 8), blackhole_update, blackhole_draw, nil)
+	e.range = range
+	e.default_physic = false
+
+	return e
+
+export blackhole_update = (e) ->
+	blackhole_center = entity_get_center(e)
+	for i, v in ipairs(entity_list)
+		enemy_center = entity_get_center(v)
+		dist = veclength(vecsub(blackhole_center, enemy_center))
+		if v.layer == LAYER_ENEMIES and dist <= e.range
+			dir = vecnormalized(vecsub(blackhole_center, enemy_center))
+			v.external_fvec = vecmul(dir, 1)
+
+export blackhole_draw = (e) ->
+	spr_id = 386
+	draw_pos = get_draw_pos(e.pos)
+	spr(spr_id, draw_pos.x - 8, draw_pos.y - 8, 0, 1, 0, 0, 2, 2)
+	circb(draw_pos.x, draw_pos.y, e.range, 12)
+
 export angel_new = (pos, following) ->
-	angel = entity_new(pos, vecnew(0, 0), angel_update, angel_draw, nil)
+	angel = entity_new(pos, vecnew(8, 8), angel_update, angel_draw, nil)
 	angel.gravity_enabled = false
 	
 	angel.following = following
@@ -491,6 +512,7 @@ export angel_new = (pos, following) ->
 	
 	angel.attack_timer_max = 1 * 60
 	angel.attack_timer = angel.attack_timer_max
+	return angel
 
 export angel_in_sight = (e) ->
 	if (e.following_rad_right)
@@ -538,7 +560,32 @@ export angel_update = (e) ->
 export angel_draw = (angle) ->
 	draw_pos = get_draw_pos(angle.pos)
 	spr_id = 384
-	spr(spr_id, draw_pos.x - 8, draw_pos.y - 8, 0, 1, 0, 0, 2, 2)
+	spr(spr_id, draw_pos.x - 4, draw_pos.y - 4, 0, 1, 0, 0, 2, 2)
+
+export crystal_fast_new = (pos, efvec) ->
+	crystal = entity_new(pos, vecnew(8, 8), crystal_fast_update, crystal_fast_draw, nil)
+	crystal.gravity_enabled = false
+	crystal.efvec = veccopy(efvec)
+	return crystal
+
+export crystal_fast_update = (crystal) ->
+	crystal.fvec = crystal.efvec
+	if entity_col(crystal)
+		crystal.rm_next_frame = true
+		blackhole_new(entity_get_center(crystal), 30)
+
+	for i, v in ipairs(entity_list)
+		if v.layer == LAYER_ENEMIES and rect_collide(crystal.pos, crystal.sz, v.pos, v.sz)
+			crystal.rm_next_frame = true
+			blackhole_new(entity_get_center(crystal), 30)
+			break
+
+export crystal_fast_draw = (crystal) ->
+	draw_pos = get_draw_pos(crystal.pos)
+	spr_id = 508
+	spr(spr_id, draw_pos.x, draw_pos.y, 0, 1, 0, 0, 1, 1)
+
+export crysral_fast_draw = (crystal) ->
 
 export crystal_no_bounce_new = (pos, efvec) ->
 	crystal = entity_new(pos, vecnew(8, 8), crystal_no_bounce_update, crystal_no_bounce_draw, nil)
@@ -1232,8 +1279,12 @@ export clamp = (v, min, max) ->
 -- 117:11200000111200001c20000011000000ff0000000c0000000c0000000f000000
 -- 128:00000ccc000ccc0000cc000000c000000cc00000cc000000c0000000c0000000
 -- 129:ccccc0000000c00000000c0000000cc0000000cc0000000c0000000c0000000c
+-- 130:0000000000000ee000000e000000e0ee000e0e00000ee000000000000000000e
+-- 131:0000e00000ee0000eee000000e0000000e000000e0000000e0000ee0000eeee0
 -- 144:c0000000cc0000000c0000000cc0000000cc0000000cc0000000ccc0000000cc
 -- 145:0000000c0000000c000000cc000000c000000cc00000cc000cccc000cc000000
+-- 146:000000e000000e0000000e0e0000e0e0000e0e00000ee0000000000000000000
+-- 147:0ee00e00e000e000000e000000e0000000ee0000000000000000000000000000
 -- 155:00000000040004000040c40000c44000000c4c000004c440004c004000400000
 -- 156:0000000000000000000000000000000000000033000033430000344400033444
 -- 157:0000000000000000000000000000000000000000303000003333000044333000
