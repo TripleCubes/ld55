@@ -258,6 +258,7 @@ export load_room = (view_room, reset) ->
 		if current_room_copy != nil
 			reset_room()
 	copy_room(view_room)
+	inventory = {}
 	-- Spawn enemies
 	for x = view_room.pos.x//8, view_room.pos.x//8 + view_room.sz.x//8
 		for y = view_room.pos.y//8, view_room.pos.y//8 + view_room.sz.y//8
