@@ -44,6 +44,7 @@ export SFX_CRYSTAL_BOUNCE = 5
 export SFX_SUMMON = 6
 export SFX_UNSUMMON = 7
 export SFX_IMP_ATTACK = 8
+export SFX_CRYSTAL_GET = 9
 
 export MAP_ENEMY_SLIME = 6
 export MAP_ENEMY_FLYING_CRITTER = 7
@@ -1283,11 +1284,15 @@ export crystal_collectable_new = (pos, crystal_type) ->
 	e = entity_new(pos, vecnew(8, 8), crystal_collectable_update, crystal_collectable_draw, nil)
 	e.default_physic = false
 	e.crystal_type = crystal_type
+	e.t = 40
 
 export crystal_collectable_update = (e) ->
+	if e.t > 0
+		e.t -= 1
 	if rect_collide(e.pos, e.sz, player.pos, player.sz) and #inventory < 3
 		e.rm_next_frame = true
 		table.insert(inventory, e.crystal_type)
+		sfx(SFX_CRYSTAL_GET)
 
 export crystal_collectable_draw = (e) ->
 	draw_pos = get_draw_pos(e.pos)
@@ -1300,7 +1305,8 @@ export crystal_collectable_draw = (e) ->
 		spr_id = 510
 	elseif e.crystal_type == CRYSTAL_GREEN
 		spr_id = 511
-	spr(spr_id, draw_pos.x, draw_pos.y, 0, 1, 0, 0, 1, 1)
+	if e.t == 0 or e.t % 10 < 5
+		spr(spr_id, draw_pos.x, draw_pos.y, 0, 1, 0, 0, 1, 1)
 
 export crystal_spawner_new = (pos, crystal_type) ->
 	e = entity_new(pos, vecnew(8, 8), crystal_spawner_update, crystal_spawner_draw, nil)
@@ -1758,6 +1764,7 @@ export palset=(c0,c1)->
 -- 006:04d004c0847065804580359025a035b045c075d0a5f0b500c500d500e500e500f500f400f400f400f400f400f400f400f400f400f400f400f400f400207000000000
 -- 007:d4f094e094d0a4b0c480d460e430f400f400f400f400f400f400f400f400f400f400f400f400f400f400f400f400f400f400f400f400f400f400f400100000000000
 -- 008:62e072b08290b240c200f200f200f200f200f200f200f200f200f200f200f200f200f200f200f200f200f200f200f200f200f200f200f200f200f200300000000000
+-- 009:4000f000c000a0c0a0c0a0c0a0c0b0c0b0c0c0c0c0c0d0c0e0c0f0c0f000f000f000f000f000f000f000f000f000f000f000f000f000f000f000f000600000000000
 -- 032:010021003100510051005100510051005100510051005100510051005100510051005100510051005100510051005100510051005100510051005100200000000000
 -- 033:0305130323024301430073009300b300c300d300f300f300f300f300f300f300f300f300f300f300f300f300f300f300f300f300f300f300f300f300a00000000000
 -- 034:6400b400d400e400f400f400f400f400f400f400f400f400f400f400f400f400f400f400f400f400f400f400f400f400f400f400f400f400f400f400700000000000
