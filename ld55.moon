@@ -405,11 +405,11 @@ export player_aim_mode = (player) ->
 export crystal_throw = (pos, dir) ->
 	if #inventory != 0
 		if inventory[1] == CRYSTAL_YELLOW
-			crystal_fast_new(pos, dir)
+			crystal_no_bounce_new(pos, dir)
 		else if inventory[1] == CRYSTAL_RED
 			crystal_bounce_new(pos, dir)
 		else if inventory[1] == CRYSTAL_BLUE
-			crystal_no_bounce_new(pos, dir)
+			crystal_fast_new(pos, dir)
 
 		table.remove(inventory, 1)
 
@@ -629,6 +629,7 @@ export angel_draw = (angle) ->
 		spr_id += 2
 	spr(spr_id, draw_pos.x - 8, draw_pos.y - 8, 0, 1, 0, 0, 2, 2)
 
+-- Fish
 export crystal_fast_new = (pos, efvec) ->
 	crystal = entity_new(pos, vecnew(8, 8), crystal_fast_update, crystal_fast_draw, nil)
 	crystal.gravity_enabled = false
@@ -649,9 +650,10 @@ export crystal_fast_update = (crystal) ->
 
 export crystal_fast_draw = (crystal) ->
 	draw_pos = get_draw_pos(crystal.pos)
-	spr_id = 508
+	spr_id = 510
 	spr(spr_id, draw_pos.x, draw_pos.y, 0, 1, 0, 0, 1, 1)
 
+-- Angel
 export crystal_no_bounce_new = (pos, efvec) ->
 	crystal = entity_new(pos, vecnew(8, 8), crystal_no_bounce_update, crystal_no_bounce_draw, nil)
 	crystal.external_fvec = veccopy(efvec)
@@ -675,9 +677,10 @@ export crystal_no_bounce_update = (crystal) ->
 
 export crystal_no_bounce_draw = (crystal) ->
 	draw_pos = get_draw_pos(crystal.pos)
-	spr_id = 510
+	spr_id = 508
 	spr(spr_id, draw_pos.x, draw_pos.y, 0, 1, 0, 0, 1, 1)
 
+-- Imp
 export crystal_bounce_new = (pos, efvec) ->
 	crystal = entity_new(pos, vecnew(8, 8), crystal_bounce_update, crystal_bounce_draw, nil)
 	crystal.external_fvec = veccopy(efvec)
