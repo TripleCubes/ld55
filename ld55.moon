@@ -370,6 +370,8 @@ export player_aim_mode = (player) ->
 	if target_angle != nil
 		dr = clamp(target_angle - player.aim_rad, -0.1, 0.1)
 		player.aim_rad += dr
+
+	player.right_dir = player.aim_rad >= PI / 2
 	
 	if btnp(4) and player.down_col
 		player.gravity = -2
@@ -402,7 +404,7 @@ export player_draw = (player) ->
 
 	spr_id = 256
 	if player.prev_btn_6_holding
-		spr_id = 320
+		spr_id = 352
 	elseif player.attack > 0
 		d = (t - player.attack_t) // 5
 		if d > 2
