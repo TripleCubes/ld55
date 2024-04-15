@@ -546,6 +546,7 @@ export crystal_no_bounce_new = (pos, efvec) ->
 
 export crystal_no_bounce_update = (crystal) ->
 	if entity_col(crystal)
+		crystal_center = entity_get_center(crystal)
 		crystal.rm_next_frame = true
 
 	for i, v in ipairs(entity_list)
@@ -596,6 +597,29 @@ export crystal_bounce_draw = (crystal) ->
 	if DEBUG_DRAW_HITBOXES
 		center = vecadd(draw_pos, vecnew(4, 4))
 		circb(center.x, center.y, CRYSTAL_TRIGGER_RADIUS, 11)
+
+export projectile_explosion_new = (pos, range, atk_player, atk_enemy) ->
+	pjt = entity_new(pos, vecnew(0, 0), projectile_explosion_update, projectile_explosion_draw, nil)
+	pjt.default_physic = false
+	pjt.range = range
+	for i, v in ipairs(entity_list)
+		enemy_center = entity_get_center(v)
+		dist = veclength(vecsub(enemy_center, pjt.pos))
+		if atk_enemy and v.layer == LAYER_ENEMIES and dist <= range
+			dir = vecnormalized(vecsub(enemy_center, pjt.pos))
+			v.external_fvec = vecmul(dir, 3)
+			v.hp -= 10
+
+	pjt.exist_for = 20
+
+export projectile_explosion_update = (pjt) ->
+	pjt.exist_for -= 1
+	if pjt.exist_for <= 0
+		pjt.rm_next_frame = true
+
+export projectile_explosion_draw = (pjt) ->
+	draw_pos = get_draw_pos(pjt.pos)
+	circb(draw_pos.x, draw_pos.y, pjt.range, 12)
 
 export projectile_laser_new = (pos, target, color) ->
 	pjt = entity_new(pos, vecnew(0, 0), projectile_laser_update, projectile_laser_draw, nil)
