@@ -35,7 +35,7 @@ export CRYSTAL_HIT_DMG = 10
 
 export SFX_JUMP = 0
 export SFX_NEXT = 1
-export SFX_SWIPE_HIT = 2
+export SFX_ANGEL_HIT = 2
 export SFX_THROW = 3
 export SFX_AIMING = 4
 export SFX_CRYSTAL_BOUNCE = 5
@@ -482,6 +482,7 @@ export angel_new = (pos, following) ->
 	angel = entity_new(pos, vecnew(0, 0), angel_update, angel_draw, nil)
 	angel.gravity_enabled = false
 	angel.t = 0
+	angel.die_t = 60
 	
 	angel.following = following
 	angel.following_range = 20
@@ -522,7 +523,9 @@ export angel_attack = (e) ->
 	e.attack_timer -= 1
 	if e.attack_timer <= 0
 		e.attack_timer = e.attack_timer_max
-		projectile_laser_new(e_center, e.following, 12)
+		projectile_laser_new(e_center, e.following, 11)
+		sfx(SFX_ANGEL_HIT)
+		timed_ent_new(e.following.pos, 5, {411}, 5, vecnew(-4, -4), 2, 1, 1)
 
 export angel_update = (e) ->
 	e_center = entity_get_center(e)
@@ -538,7 +541,11 @@ export angel_update = (e) ->
 		e.t = 16
 
 	if e.following == nil or e.following.hp <= 0
-		e.rm_next_frame = true
+		e.die_t -= 1
+		if e.die_t == 0
+			e.rm_next_frame = true
+			timed_ent_new(e.pos, 16, {414, 412}, 8, vecnew(-16, -16), 2, 2, 2)
+			sfx(SFX_UNSUMMON)
 
 export angel_draw = (angle) ->
 	draw_pos = get_draw_pos(angle.pos)
@@ -636,6 +643,7 @@ export projectile_laser_new = (pos, target, color) ->
 	pjt = entity_new(pos, vecnew(0, 0), projectile_laser_update, projectile_laser_draw, nil)
 	pjt.target = target
 	pjt.default_physic = false
+	pjt.color = color
 	target.hp -= 10
 	pjt.exist_for = 20
 	return pjt
@@ -648,7 +656,7 @@ export projectile_laser_update = (pjt) ->
 export projectile_laser_draw = (pjt) ->
 	draw_pos = get_draw_pos(pjt.pos)
 	target_pos = get_draw_pos(entity_get_center(pjt.target))
-	line(draw_pos.x, draw_pos.y, target_pos.x, target_pos.y, 12)
+	line(draw_pos.x, draw_pos.y, target_pos.x, target_pos.y, pjt.color)
 
 export projectile_new = (pos, dir, atk_player, atk_enemies, color) ->
 	pjt = entity_new(pos, vecnew(1, 1), projectile_update, projectile_draw, nil)
@@ -1023,7 +1031,7 @@ export entity_list_overlaps = () ->
 					if v_parent_center.x < v2_center.x
 						v2.external_fvec.x = 2
 
-					sfx(SFX_SWIPE_HIT)
+					sfx(SFX_ANGEL_HIT)
 
 export entity_list_draw = () ->
 	for i, v in ipairs(entity_list)
