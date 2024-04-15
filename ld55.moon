@@ -45,6 +45,7 @@ export SFX_SUMMON = 6
 export SFX_UNSUMMON = 7
 export SFX_IMP_ATTACK = 8
 export SFX_CRYSTAL_GET = 9
+export SFX_DEATH = 10
 
 export MAP_ENEMY_SLIME = 6
 export MAP_ENEMY_FLYING_CRITTER = 7
@@ -81,7 +82,7 @@ export CROC_RANGE = 16
 
 export BTN_THROW = 5
 
-export MUSIC = false
+export MUSIC = true
 export DEBUG_DRAW_HITBOXES = true
 
 class Button
@@ -495,28 +496,27 @@ export crystal_throw = (pos, dir) ->
 		table.remove(inventory, 1)
 
 export player_update = (player) ->
-	if player.attack > 0
-		player.attack -= 1
-	if not btn(BTN_THROW)
-		player_movement(player)
-
-		if player.prev_btn_6_holding
-			dir = vec_from_rad(player.aim_rad)
-			crystal_throw(player.pos, vecmul(dir, 4.5))
-			sfx(SFX_THROW)
-			player.attack = 15
-			player.attack_t = t
-			player.attack_row = 1 - player.attack_row
-
-	else
-		if not player.prev_btn_6_holding
-			sfx(SFX_AIMING)
-		player_aim_mode(player)
-
-	player.prev_btn_6_holding = btn(BTN_THROW)
-
-
 	if player.visible
+		if player.attack > 0
+			player.attack -= 1
+		if not btn(BTN_THROW)
+			player_movement(player)
+
+			if player.prev_btn_6_holding
+				dir = vec_from_rad(player.aim_rad)
+				crystal_throw(player.pos, vecmul(dir, 4.5))
+				sfx(SFX_THROW)
+				player.attack = 15
+				player.attack_t = t
+				player.attack_row = 1 - player.attack_row
+
+		else
+			if not player.prev_btn_6_holding
+				sfx(SFX_AIMING)
+			player_aim_mode(player)
+
+		player.prev_btn_6_holding = btn(BTN_THROW)
+
 		for i, v in ipairs(entity_list)
 			if v.layer == LAYER_ENEMIES or (v.atk_player != nil and v.atk_player == true)
 				if rect_collide(player.pos, player.sz, entity_get_center(v), vecnew(3,3))
@@ -524,6 +524,7 @@ export player_update = (player) ->
 						v.rm_next_frame = true
 					player.visible = false
 					player.death_at = t
+					sfx(SFX_DEATH)
 
 	if not player.visible
 		if t - player.death_at == 10
@@ -1768,6 +1769,7 @@ export palset=(c0,c1)->
 -- 007:d4f094e094d0a4b0c480d460e430f400f400f400f400f400f400f400f400f400f400f400f400f400f400f400f400f400f400f400f400f400f400f400100000000000
 -- 008:62e072b08290b240c200f200f200f200f200f200f200f200f200f200f200f200f200f200f200f200f200f200f200f200f200f200f200f200f200f200300000000000
 -- 009:4000f000c000a0c0a0c0a0c0a0c0b0c0b0c0c0c0c0c0d0c0e0c0f0c0f000f000f000f000f000f000f000f000f000f000f000f000f000f000f000f000600000000000
+-- 010:02f012e012d022b032a03280427042d042c052b0529062806270725072b082a082909280a270a260b2a0b290b280c280c260d250d290e280e270f250300000000000
 -- 032:010021003100510051005100510051005100510051005100510051005100510051005100510051005100510051005100510051005100510051005100200000000000
 -- 033:0305130323024301430073009300b300c300d300f300f300f300f300f300f300f300f300f300f300f300f300f300f300f300f300f300f300f300f300a00000000000
 -- 034:6400b400d400e400f400f400f400f400f400f400f400f400f400f400f400f400f400f400f400f400f400f400f400f400f400f400f400f400f400f400700000000000
