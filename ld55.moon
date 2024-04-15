@@ -518,7 +518,7 @@ export player_update = (player) ->
 	if player.visible
 		for i, v in ipairs(entity_list)
 			if v.layer == LAYER_ENEMIES or (v.atk_player != nil and v.atk_player == true)
-				if rect_collide(player.pos, player.sz, v.pos, v.sz)
+				if rect_collide(player.pos, player.sz, entity_get_center(v), vecnew(3,3))
 					if v.atk_player != nil and v.atk_player == true
 						v.rm_next_frame = true
 					player.visible = false
