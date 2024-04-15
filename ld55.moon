@@ -28,7 +28,6 @@ export camera_tween_origin = {}
 export camera_tweening_start_at = 0
 export CAMERA_TWEENING_TIME = 60
 
-export CRYSTAL_BOUNCE = 1
 export CRYSTAL_SUMMON_VEL = 1
 
 export SFX_JUMP = 0
@@ -225,7 +224,7 @@ export player_update = (player) ->
 
 		if player.prev_btn_6_holding
 			dir = vec_from_rad(player.aim_rad)
-			crystal_bounce_new(player.pos, vecmul(dir, 4.5))
+			crystal_no_bounce_new(player.pos, vecmul(dir, 4.5))
 			sfx(SFX_THROW)
 			player.attack = 15
 			player.attack_t = t
@@ -319,9 +318,91 @@ export swipe_draw = (swipe) ->
 		rectb(draw_pos.x, draw_pos.y, swipe.sz.x, swipe.sz.y, 11)
 	spr(spr_id, draw_pos.x, draw_pos.y, 0, 1, flip, 0, 2, 2)
 
+export angel_new = (pos, following) ->
+	angel = entity_new(pos, vecnew(0, 0), angel_update, angel_draw, nil)
+	angel.gravity_enabled = false
+	
+	angel.following = following
+	angel.following_range = 20
+	angel.following_rad_margin = 0.05
+	angel.following_rad = rndf(PI*angel.following_rad_margin, PI - PI*angel.following_rad_margin)
+	angel.following_rad_right = false
+	angel.sight_range = 60
+	
+	angel.attack_timer_max = 1 * 60
+	angel.attack_timer = angel.attack_timer_max
+
+export angel_in_sight = (e) ->
+	if (e.following_rad_right)
+		e.following_rad += 0.01
+		if e.following_rad > PI - PI*e.following_rad_margin
+			e.following_rad = PI - PI*e.following_rad_margin
+			e.following_rad_right = false
+	else
+		e.following_rad -= 0.01
+		if e.following_rad < PI * e.following_rad_margin
+			e.following_rad = PI * e.following_rad_margin
+			e.following_rad_right = true
+
+
+	e_center = entity_get_center(e)
+
+	dir = vec_from_rad(e.following_rad)
+	dest = vecadd(vecmul(dir, e.following_range), e.following.pos)
+
+	dir_dest = vecsub(dest, e_center)
+	e.fvec = vecmul(dir_dest, 0.05)
+
+export angel_attack = (e) ->
+	e_center = entity_get_center(e)
+	following_center = entity_get_center(e.following)
+	dir = vecsub(following_center, e_center)
+
+	e.attack_timer -= 1
+	if e.attack_timer <= 0
+		e.attack_timer = e.attack_timer_max
+		projectile_laser_new(e_center, e.following, 12)
+
+export angel_update = (e) ->
+	e_center = entity_get_center(e)
+	following_center = entity_get_center(e.following)
+	dist = veclength(vecsub(e_center, following_center))
+
+	if dist <= e.sight_range
+		angel_in_sight(e)
+		angel_attack(e)
+
+	if e.following == nil or e.following.hp <= 0
+		e.rm_next_frame = true
+
+export angel_draw = (angle) ->
+	draw_pos = get_draw_pos(angle.pos)
+	spr_id = 384
+	spr(spr_id, draw_pos.x - 8, draw_pos.y - 8, 0, 1, 0, 0, 2, 2)
+
+export crystal_no_bounce_new = (pos, efvec) ->
+	crystal = entity_new(pos, vecnew(8, 8), crystal_no_bounce_update, crystal_no_bounce_draw, nil)
+	crystal.external_fvec = veccopy(efvec)
+
+export crystal_no_bounce_update = (crystal) ->
+	if entity_col(crystal)
+		crystal.rm_next_frame = true
+
+	for i, v in ipairs(entity_list)
+		if v.layer == LAYER_ENEMIES
+			dist = veclength(vecsub(crystal.pos, v.pos))
+			if dist <= 30
+				crystal.rm_next_frame = true
+				angel_new(crystal.pos, v)
+				return
+
+export crystal_no_bounce_draw = (crystal) ->
+	draw_pos = get_draw_pos(crystal.pos)
+	spr_id = 510
+	spr(spr_id, draw_pos.x, draw_pos.y, 0, 1, 0, 0, 1, 1)
+
 export crystal_bounce_new = (pos, efvec) ->
-	crystal = entity_new(pos, vecnew(8, 8), crystal_bounce_update, crystal_bounce_draw)
-	crystal.type = CRYSTAL_BOUNCE
+	crystal = entity_new(pos, vecnew(8, 8), crystal_bounce_update, crystal_bounce_draw, nil)
 	crystal.external_fvec = veccopy(efvec)
 
 export crystal_bounce_update = (crystal) ->
@@ -344,6 +425,24 @@ export crystal_bounce_draw = (crystal) ->
 	draw_pos = get_draw_pos(crystal.pos)
 	spr_id = 509
 	spr(spr_id, draw_pos.x, draw_pos.y, 0, 1, 0, 0, 1, 1)
+
+export projectile_laser_new = (pos, target, color) ->
+	pjt = entity_new(pos, vecnew(0, 0), projectile_laser_update, projectile_laser_draw, nil)
+	pjt.target = target
+	pjt.default_physic = false
+	target.hp -= 10
+	pjt.exist_for = 20
+	return pjt
+
+export projectile_laser_update = (pjt) ->
+	pjt.exist_for -= 1
+	if pjt.exist_for <= 0
+		pjt.rm_next_frame = true
+
+export projectile_laser_draw = (pjt) ->
+	draw_pos = get_draw_pos(pjt.pos)
+	target_pos = get_draw_pos(entity_get_center(pjt.target))
+	line(draw_pos.x, draw_pos.y, target_pos.x, target_pos.y, 12)
 
 export projectile_new = (pos, dir, atk_player, atk_enemies, color) ->
 	pjt = entity_new(pos, vecnew(1, 1), projectile_update, projectile_draw, nil)
@@ -933,6 +1032,10 @@ export entity_overlap = (e1, e2) ->
 -- 115:112000001112000011200000c2000000f0000000c0000000dc0000000f000000
 -- 116:000100220000021100000c1100000011000000ff000000d000000d0000000f00
 -- 117:11200000111200001c20000011000000ff0000000c0000000c0000000f000000
+-- 128:00000ccc000ccc0000cc000000c000000cc00000cc000000c0000000c0000000
+-- 129:ccccc0000000c00000000c0000000cc0000000cc0000000c0000000c0000000c
+-- 144:c0000000cc0000000c0000000cc0000000cc0000000cc0000000ccc0000000cc
+-- 145:0000000c0000000c000000cc000000c000000cc00000cc000cccc000cc000000
 -- 155:00000000040004000040c40000c44000000c4c000004c440004c004000400000
 -- 156:0000000000000000000000000000000000000033000033430000344400033444
 -- 157:0000000000000000000000000000000000000000303000003333000044333000
