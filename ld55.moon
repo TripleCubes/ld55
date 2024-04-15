@@ -23,6 +23,7 @@ export camera = { pos: {x: 0, y: 0} }
 export view_room_list = {}
 export prev_view_room = {}
 export inventory = {}
+export current_room_copy = nil
 
 export camera_tweening = false
 export camera_tween_destination = {}
@@ -220,13 +221,35 @@ export BOOT = ->
 	gameState.nextstate = titleState
 	state\reset!
 
-export game_init = ->
-	init_view_room_list!
-	player = player_new(vecnew(10, 60))
-	camera.pos = vecnew(0, player.pos.y - WINDOW_H/2)
+export copy_room = (view_room) ->
+	current_room_copy = {pos: veccopy(view_room.pos), sz: veccopy(view_room.sz), list: {}}
+
+	for x = 0, view_room.sz.x//8
+		table.insert(current_room_copy.list, {})
+		for y = 0, view_room.sz.y//8
+			m = mget(x + view_room.pos.x//8, y + view_room.pos.y//8)
+			table.insert(current_room_copy.list[x + 1], m)
+
+export reset_room = ->
+	crc = current_room_copy
+	for x = crc.pos.x//8, crc.pos.x//8 + crc.sz.x //8
+		for y = crc.pos.y//8, crc.pos.y//8 + crc.sz.y//8
+			mset(x, y, crc.list[x-crc.pos.x//8 + 1][y-crc.pos.y//8 + 1])
+
+export clear_all_entities = ->
+	for i, v in ipairs(entity_list)
+		if v != player
+			v.rm_next_frame = true
+
+export load_room = (view_room, reset) ->
+	if reset
+		clear_all_entities()
+		if current_room_copy != nil
+			reset_room()
+	copy_room(view_room)
 	-- Spawn enemies
-	for x = 0, WINDOW_W
-		for y = 0, WINDOW_H
+	for x = view_room.pos.x//8, view_room.pos.x//8 + view_room.sz.x//8
+		for y = view_room.pos.y//8, view_room.pos.y//8 + view_room.sz.y//8
 			m = mget(x, y)
 			spawn_pos = vecnew(x*8, (y-1)*8)
 			if m == MAP_ENEMY_SLIME
@@ -260,6 +283,10 @@ export game_init = ->
 				mset(x, y, 0)
 				crystal_spawner_new(spawn_pos, CRYSTAL_GREEN)
 
+export game_init = ->
+	init_view_room_list!
+	player = player_new(vecnew(10, 60))
+	camera.pos = vecnew(0, player.pos.y - WINDOW_H/2)
 	if MUSIC
 		music(0,-1,-1,true,true)
 
@@ -332,6 +359,7 @@ export camera_update = ->
 	snap_camera_pos_to_view_room(nx_camera_pos, view_room)
 
 	if not camera_tweening and view_room != prev_view_room
+		load_room(view_room, false)
 		camera_tweening = true
 		camera_tweening_start_at = t
 		camera_tween_destination = veccopy(nx_camera_pos)
@@ -455,6 +483,10 @@ export player_update = (player) ->
 		player_aim_mode(player)
 
 	player.prev_btn_6_holding = btn(BTN_THROW)
+
+	if btnp(7)
+		view_room = get_view_room()
+		load_room(view_room, true)
 	
 export player_draw = (player) ->
 	draw_pos = get_draw_pos(player.pos)
@@ -1087,7 +1119,7 @@ export entity_collision = (e) ->
 			if x == e.sz.x//8
 				add.x -= 1
 			pos = vecadd(e.pos, add)
-			if map_solid(pos.x//8, pos.y//8) or map_up_col(pos.x//8, pos.y//8)
+			if (map_solid(pos.x//8, pos.y//8) or map_up_col(pos.x//8, pos.y//8)) and pos.y == floor2(pos.y, 8)
 				e.down_col = true
 				break
 
