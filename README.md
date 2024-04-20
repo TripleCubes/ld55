@@ -1,3 +1,7 @@
+Play the game at
+
+https://ldjam.com/events/ludum-dare/55/crystalline
+
 By TripleCubes and congusbongus
 
 Written in 3 days for Ludum Dare 55
