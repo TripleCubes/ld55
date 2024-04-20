@@ -256,40 +256,24 @@ class EndState extends State
 		player = player_new(vecnew(6 * 8, 131 * 8))
 		camera.pos = vecnew(player.pos.x - 4 * 8, player.pos.y - 8 * 8)
 		-- Generate endless terrain
-		for x = 0, 239
-			-- Ground
-			mset(x, 133, 33)
-			-- Below ground
-			ground_ids = {1, 17, 49}
-			tile_id = ground_ids[math.random(#ground_ids)]
-			mset(x, 134, tile_id)
-
-			ground_placed = false
-			-- Flowers
-			tile_id = math.random(18, 31)
-			if tile_id < 26
-				ground_placed = true
-				mset(x, 131, tile_id)
-				mset(x, 132, tile_id + 16)
-			-- Slimes
-			if not ground_placed and math.random(0, 20) == 0
-				ground_placed = true
-				mset(x, 132, 6)
-			-- Gem spawner
-			tile_id = math.random(12, 100)
-			if not ground_placed and tile_id <= 15
-				ground_placed = true
-				mset(x, 132, tile_id)
-			
-			-- Flyers
-			if math.random(0, 40) == 0
-				mset(x, 125, 7)
+		for x = 0, WINDOW_W // 8
+			@gen_col(x)
 		ENDING_MODE = true
 		t = 0
 
 	update:=>
 		super!
+		-- Generate the column immediately to the right of the player
+		if (player.pos.x % 8) == 0
+			x = player.pos.x//8 + 23
+			if x > WINDOW_W
+				x -= WINDOW_W
+			@gen_col(x)
 		game_update!
+		-- Despawn entities out of sight
+		for i, v in ipairs(entity_list)
+			if player.pos.x < WINDOW_W * 8 - 100 and player.pos.x - v.pos.x > 50
+				v.rm_next_frame = true
 		t += 1
  
 	draw:=>
@@ -300,6 +284,41 @@ class EndState extends State
 		map(camera.pos.x//8-1, camera.pos.y//8-1, 32, 19, 8-camera.pos.x%8-16, 8-camera.pos.y%8-16)
 		map_text_draw!
 		entity_list_draw!
+
+	gen_col:(x)=>
+		-- Clear tiles
+		for y = 122, 132
+			mset(x, y, 0)
+		-- Ground
+		mset(x, 133, 33)
+		-- Below ground
+		ground_ids = {1, 17, 49}
+		tile_id = ground_ids[math.random(#ground_ids)]
+		mset(x, 134, tile_id)
+
+		ground_placed = false
+		-- Flowers
+		tile_id = math.random(18, 50)
+		if tile_id < 29
+			ground_placed = true
+			mset(x, 131, tile_id)
+			mset(x, 132, tile_id + 16)
+		-- Slimes
+		if not ground_placed and math.random(0, 20) == 0
+			ground_placed = true
+			mset(x, 132, 6)
+		-- Gem spawner
+		tile_id = math.random(12, 100)
+		if not ground_placed and tile_id <= 15
+			ground_placed = true
+			mset(x, 132, tile_id)
+		
+		-- Flyers
+		if math.random(0, 40) == 0
+			mset(x, 125, 7)
+
+		for y = 122, 132
+			spawn_map_entity(x, y)
 
 
 endState = EndState!
@@ -380,40 +399,43 @@ export load_room = (view_room, reset) ->
 	-- Spawn enemies
 	for x = view_room.pos.x//8, view_room.pos.x//8 + view_room.sz.x//8
 		for y = view_room.pos.y//8, view_room.pos.y//8 + view_room.sz.y//8
-			m = mget(x, y)
-			spawn_pos = vecnew(x*8, (y-1)*8)
-			if m == MAP_ENEMY_SLIME
-				mset(x, y, 0)
-				enemy_new(spawn_pos)
-			elseif m == MAP_ENEMY_FLYING_CRITTER
-				mset(x, y, 0)
-				enemy_flying_critter_new(spawn_pos)
-			elseif m == MAP_CRYSTAL_YELLOW
-				mset(x, y, 0)
-				crystal_collectable_new(spawn_pos, CRYSTAL_YELLOW)
-			elseif m == MAP_CRYSTAL_RED
-				mset(x, y, 0)
-				crystal_collectable_new(spawn_pos, CRYSTAL_RED)
-			elseif m == MAP_CRYSTAL_BLUE
-				mset(x, y, 0)
-				crystal_collectable_new(spawn_pos, CRYSTAL_BLUE)
-			elseif m == MAP_CRYSTAL_GREEN
-				mset(x, y, 0)
-				crystal_collectable_new(spawn_pos, CRYSTAL_GREEN)
-			elseif m == MAP_CRYSTAL_SPAWNER_YELLOW
-				mset(x, y, 0)
-				crystal_spawner_new(spawn_pos, CRYSTAL_YELLOW)
-			elseif m == MAP_CRYSTAL_SPAWNER_RED
-				mset(x, y, 0)
-				crystal_spawner_new(spawn_pos, CRYSTAL_RED)
-			elseif m == MAP_CRYSTAL_SPAWNER_BLUE
-				mset(x, y, 0)
-				crystal_spawner_new(spawn_pos, CRYSTAL_BLUE)
-			elseif m == MAP_CRYSTAL_SPAWNER_GREEN
-				mset(x, y, 0)
-				crystal_spawner_new(spawn_pos, CRYSTAL_GREEN)
-			elseif reset and m == MAP_RESPAWN_INVISIBLE
-				player.pos = vecnew(x * 8, y * 8 - 8)
+			spawn_map_entity(x, y)
+
+export spawn_map_entity = (x, y) ->
+	m = mget(x, y)
+	spawn_pos = vecnew(x*8, (y-1)*8)
+	if m == MAP_ENEMY_SLIME
+		mset(x, y, 0)
+		enemy_new(spawn_pos)
+	elseif m == MAP_ENEMY_FLYING_CRITTER
+		mset(x, y, 0)
+		enemy_flying_critter_new(spawn_pos)
+	elseif m == MAP_CRYSTAL_YELLOW
+		mset(x, y, 0)
+		crystal_collectable_new(spawn_pos, CRYSTAL_YELLOW)
+	elseif m == MAP_CRYSTAL_RED
+		mset(x, y, 0)
+		crystal_collectable_new(spawn_pos, CRYSTAL_RED)
+	elseif m == MAP_CRYSTAL_BLUE
+		mset(x, y, 0)
+		crystal_collectable_new(spawn_pos, CRYSTAL_BLUE)
+	elseif m == MAP_CRYSTAL_GREEN
+		mset(x, y, 0)
+		crystal_collectable_new(spawn_pos, CRYSTAL_GREEN)
+	elseif m == MAP_CRYSTAL_SPAWNER_YELLOW
+		mset(x, y, 0)
+		crystal_spawner_new(spawn_pos, CRYSTAL_YELLOW)
+	elseif m == MAP_CRYSTAL_SPAWNER_RED
+		mset(x, y, 0)
+		crystal_spawner_new(spawn_pos, CRYSTAL_RED)
+	elseif m == MAP_CRYSTAL_SPAWNER_BLUE
+		mset(x, y, 0)
+		crystal_spawner_new(spawn_pos, CRYSTAL_BLUE)
+	elseif m == MAP_CRYSTAL_SPAWNER_GREEN
+		mset(x, y, 0)
+		crystal_spawner_new(spawn_pos, CRYSTAL_GREEN)
+	elseif reset and m == MAP_RESPAWN_INVISIBLE
+		player.pos = vecnew(x * 8, y * 8 - 8)
 
 export game_init = ->
 	init_view_room_list!
@@ -469,13 +491,20 @@ export init_view_room_list = ->
 			table.remove(view_room_list, i)
 
 export get_view_room = ->
+	if ENDING_MODE
+		return nil
 	for i, v in ipairs(view_room_list)
 		if (in_rect(vecadd(player.pos, vecnew(PLAYER_W/2, PLAYER_H/2)), v.pos, v.sz))
 			return v
 	return nil
 
 export get_draw_pos = (vec) ->
-	return vecsub(vecfloor(vec), vecfloor(camera.pos))
+	v = vecsub(vecfloor(vec), vecfloor(camera.pos))
+	if v.x < 0
+		v.x += WINDOW_W * 8
+	if v.x >= WINDOW_W * 8
+		v.x -= WINDOW_W * 8
+	return v
 
 export snap_camera_pos_to_view_room = (camera_pos, view_room) ->
 	if camera_pos.x < view_room.pos.x
@@ -614,7 +643,10 @@ export player_update = (player) ->
 		if not btn(BTN_THROW)
 			player_movement(player)
 
-			if player.prev_btn_6_holding
+			-- auto throw crystal if ending mode
+			if player.prev_btn_6_holding or (ENDING_MODE and #inventory > 0)
+				if ENDING_MODE
+					player.aim_rad = PI * 3 / 4
 				dir = vec_from_rad(player.aim_rad)
 				crystal_throw(player.pos, vecmul(dir, 4.5))
 				sfx(SFX_THROW)
@@ -1178,6 +1210,8 @@ export enemy_new = (pos) ->
 	e.hp = 20
 	e.layer = LAYER_ENEMIES
 	e.dx = 1
+	if math.random(0, 1) == 0
+		e.dx = -1
 	return e
 
 export enemy_update = (enemy) ->
@@ -1742,14 +1776,17 @@ export palset=(c0,c1)->
 -- 022:0000000000000000000000000000000000000000000000000000000000000300
 -- 024:0000000000000000000000000000000000000000000000000000000000b00000
 -- 033:655656566766767677777777fddffedfedffedffeffeeffedfdddfeefefffeef
--- 034:0000000000010000001410000001000000060000000600000006000000006000
--- 035:04c400000040000000600b000060b4b000600b00006006000600006006000060
--- 036:0000000000000000000000000006000000060000000060000000600000006000
--- 037:0000000000100000014100000010000000600000060000000600000006000000
--- 038:0000343000000300000006000000060000000600000006000000006000000060
--- 039:0000000000000000000000000000060000060600000600600060006000600060
--- 040:0b4b000000b00000006000000060000000600000000600000006000000060000
--- 041:0c000000c4c000000c0000000600000006000000060000006000000060000000
+-- 034:0000000000010000001410000001000000060000000600000076000000076000
+-- 035:04c400000040000000600b000060b4b000600b00006006000607006706770760
+-- 036:0000000000000000000000000006000000060000000060000070600000076000
+-- 037:0000000000100000014100000010000000600000060000000600000076700000
+-- 038:0000343000000300000006000000060000000600000076000000076000000760
+-- 039:0000000000000000000000000000060000060600000600600060076000670767
+-- 040:0b4b000000b00000006000000060000000600000000600000076070000767000
+-- 041:0c000000c4c000000c0000000600000006000000060000006000000067000000
+-- 042:0000000000000000000000000000000000000000000000000700000007700700
+-- 043:0000000000000000000000000000000000000000000000700700070007000700
+-- 044:0000000000000000000000000000000000000000007000000070000000770000
 -- 049:fefdfddfeeddfffddfffeefdfefeedeffdfdfddfddffeffeffeddffdeedffedf
 -- </TILES>
 
