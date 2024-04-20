@@ -644,9 +644,50 @@ export player_update = (player) ->
 			player_movement(player)
 
 			-- auto throw crystal if ending mode
-			if player.prev_btn_6_holding or (ENDING_MODE and #inventory > 0)
-				if ENDING_MODE
-					player.aim_rad = PI * 3 / 4
+			throw = player.prev_btn_6_holding
+			if ENDING_MODE and #inventory > 0
+				-- Check if there are enemies nearby to hit
+				closest_enemy = {nil, nil}
+				closest_ground_enemy = {nil, nil}
+				closest_air_enemy = {nil, nil}
+				for i, v in ipairs(entity_list)
+					if v.layer == LAYER_ENEMIES
+						d = vecsub(v.pos, player.pos)
+						dist = veclength(d)
+						if dist < 150
+							if closest_enemy[2] == nil or closest_enemy[2] > dist
+								closest_enemy = {d, dist}
+							if d.y > -10
+								if closest_ground_enemy[2] == nil or closest_ground_enemy[2] > dist
+									closest_ground_enemy = {d, dist}
+							else
+								if closest_air_enemy[2] == nil or closest_air_enemy[2] > dist
+									closest_air_enemy = {d, dist}
+				if inventory[1] == CRYSTAL_YELLOW
+					-- Attack closest enemy
+					if closest_enemy[1] != nil
+						throw = true
+						player.aim_rad = PI - math.atan2(-closest_enemy[1].y, closest_enemy[1].x)
+						if player.aim_rad > PI
+							player.aim_rad = PI
+				else if inventory[1] == CRYSTAL_RED
+					-- Attack closest enemy at an angle
+					if closest_enemy[1] != nil
+						throw = true
+						player.aim_rad = PI - math.atan2(-closest_enemy[1].y, closest_enemy[1].x)
+						if player.aim_rad > PI
+							player.aim_rad = PI
+				else if inventory[1] == CRYSTAL_BLUE
+					-- Attack if there's a ground enemy
+					if closest_ground_enemy[1] != nil
+						throw = true
+						player.aim_rad = PI * 3 / 4
+				else if inventory[1] == CRYSTAL_GREEN
+					-- Attack closest ground enemy if it's close enough
+					if closest_ground_enemy[1] != nil and closest_ground_enemy[1].x < 50 and closest_ground_enemy[1].x > 5
+						throw = true
+						player.aim_rad = PI * 3 / 4
+			if throw
 				dir = vec_from_rad(player.aim_rad)
 				crystal_throw(player.pos, vecmul(dir, 4.5))
 				sfx(SFX_THROW)
