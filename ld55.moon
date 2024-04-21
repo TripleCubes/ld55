@@ -260,6 +260,15 @@ class EndState extends State
 			@gen_col(x)
 		ENDING_MODE = true
 		t = 0
+		@stars = {}
+		for i = 0, 30
+			x = math.random(0, WINDOW_W)
+			y = math.random(0, WINDOW_H//3)
+			table.insert(@stars, {x, y})
+		@clouds = {}
+		for i = 0, 5
+			@gen_cloud(i * 40 + math.random(10, 30))
+		@cloud_tt = 0
 
 	update:=>
 		super!
@@ -269,6 +278,19 @@ class EndState extends State
 			if x > WINDOW_W
 				x -= WINDOW_W
 			@gen_col(x)
+		-- Move clouds
+		for i, v in ipairs @clouds
+			v[1] -= (v[2] + v[3]) * 0.005
+		for i = #@clouds, 1, -1
+			v = @clouds[i]
+
+			if v[1] + v[3] < 0
+				table.remove(@clouds, i)
+		-- Generate new clouds
+		if @cloud_tt == 0
+			@gen_cloud(240)
+			@cloud_tt = math.random(200, 400)
+		@cloud_tt -= 1
 		game_update!
 		-- Despawn entities out of sight
 		for i, v in ipairs(entity_list)
@@ -278,11 +300,15 @@ class EndState extends State
  
 	draw:=>
 		super!
+		for i, v in ipairs @stars
+			pix(v[1], v[2], 12)
+		for i, v in ipairs @clouds
+			circ(v[1], v[2]+v[3]//3, v[3], 13)
+			circ(v[1], v[2]-2, v[3], 12)
 		-- Fixed camera
 		camera.pos.x = player.pos.x - 56
 		camera.pos.y = 118 * 8
-		map(camera.pos.x//8-1, camera.pos.y//8-1, 32, 19, 8-camera.pos.x%8-16, 8-camera.pos.y%8-16)
-		map_text_draw!
+		map(camera.pos.x//8-1, camera.pos.y//8-1, 32, 19, 8-camera.pos.x%8-16, 8-camera.pos.y%8-16, 0)
 		entity_list_draw!
 
 	gen_col:(x)=>
@@ -320,6 +346,20 @@ class EndState extends State
 		for y = 122, 132
 			spawn_map_entity(x, y)
 
+	gen_cloud:(dx)=>
+		y = math.random(WINDOW_H//4, WINDOW_H * 2 // 3)
+		x = dx
+		last_r = 2
+		num = math.random(1, 5)
+		for j = 0, num
+			r = math.random(math.min(10, last_r+1), 10)
+			if j > num // 2
+				r = math.random(2, math.max(2, last_r-1))
+			x += r * 0.8
+			table.insert(@clouds, {x, y - r, r})
+			x += r * 0.8
+			last_r = r
+
 
 endState = EndState!
 titleState = TitleState(endState)
@@ -341,6 +381,10 @@ export map_text_draw = ->
 	map_text(98, 91, "You win")
 	map_text(98, 92, "A game by congusbongus and TripleCubed")
 	map_text(98, 93, "Thanks for playing")
+
+export SCN = (scn) ->
+	if ENDING_MODE
+		poke(0x3fc2,scn+10)
 
 export BOOT = ->
 	titleState.nextstate = gameState
